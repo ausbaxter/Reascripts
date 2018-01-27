@@ -3688,6 +3688,7 @@ function Render()
                         DeleteRegions()
                         GUI.elms.btn_commit_regions.col_txt = "gray" 
                     end
+                    GUI.Val("txt_name", "") --reset name field
                     reaper.UpdateArrange()
                     ErrorMsg("Render Success!")
                    
