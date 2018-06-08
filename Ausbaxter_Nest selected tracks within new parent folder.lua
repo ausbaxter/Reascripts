@@ -41,11 +41,11 @@ function main() -- Main Function
       track = reaper.GetSelectedTrack(0, i)
       
       if i == 0 then
-      reaper.SetMediaTrackInfo_Value(track, "I_FOLDERDEPTH", 1)
+        reaper.SetMediaTrackInfo_Value(track, "I_FOLDERDEPTH", 1)
       elseif i == selTrackCount - 1 then
-      reaper.SetMediaTrackInfo_Value(track, "I_FOLDERDEPTH", -1)
+        local last_folder_depth = reaper.GetMediaTrackInfo_Value(track, "I_FOLDERDEPTH")
+        reaper.SetMediaTrackInfo_Value(track, "I_FOLDERDEPTH", last_folder_depth - 1)
       end
-      
     end
     
 end
@@ -55,11 +55,10 @@ if selTrackCount > 0 then
 
   reaper.Undo_BeginBlock()
   main()
+  reaper.Undo_EndBlock("Nest tracks in new folder", -1)
   
 else
   
   reaper.ReaScriptError("Error: Select tracks to be nested within a folder")
   
 end
-
-reaper.Undo_EndBlock("Make selected tracks child tracks", -1)
