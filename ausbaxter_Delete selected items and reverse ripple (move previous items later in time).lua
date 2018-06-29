@@ -101,10 +101,15 @@ function main()
             local len = end_item_end - first_item_pos
 
             local offset
-            if item_after_end ~= nil then
+            if item_after_end ~= nil then 
                 offset = reaper.GetMediaItemInfo_Value(item_after_end,"D_POSITION") - end_item_end
             else
-                offset = first_item_pos - (reaper.GetMediaItemInfo_Value(item_before_start,"D_POSITION") + reaper.GetMediaItemInfo_Value(item_before_start,"D_LENGTH"))
+                if reaper.GetMediaItemInfo_Value(item_before_start,"D_POSITION") + reaper.GetMediaItemInfo_Value(item_before_start,"D_LENGTH") < first_item_pos then
+                    offset = 0
+                else
+                    offset = first_item_pos - (reaper.GetMediaItemInfo_Value(item_before_start,"D_POSITION") + reaper.GetMediaItemInfo_Value(item_before_start,"D_LENGTH"))
+                end
+
             end
 
             for l = curr_start - 1, 0, -1 do

@@ -84,66 +84,37 @@ function main()
     reaper.Main_OnCommand(ripple_off,0)
     f_item = reaper.GetSelectedMediaItem(0, 0)
     track = reaper.GetMediaItemTrack(f_item)
+    f_item_pos = reaper.GetMediaItemInfo_Value(f_item, "D_POSITION")
     f_item_idx = reaper.GetMediaItemInfo_Value(f_item, "IP_ITEMNUMBER")
     f_item_fadein = reaper.GetMediaItemInfo_Value(f_item, "D_FADEINLEN")
     f_item_fadeout = reaper.GetMediaItemInfo_Value(f_item, "D_FADEOUTLEN")
     l_item = reaper.GetSelectedMediaItem(0, reaper.CountSelectedMediaItems(0)-1)
     l_item_idx = reaper.GetMediaItemInfo_Value(l_item, "IP_ITEMNUMBER")
+
     n_item = reaper.GetTrackMediaItem(track,l_item_idx+1)
-    n_item_fadein = reaper.GetMediaItemInfo_Value(n_item, "D_FADEINLEN")
     p_item = reaper.GetTrackMediaItem(track,f_item_idx-1)
-   
-    p_item_end = reaper.GetMediaItemInfo_Value(p_item, "D_POSITION") + reaper.GetMediaItemInfo_Value(p_item, "D_LENGTH")
-    offset = reaper.GetMediaItemInfo_Value(n_item, "D_POSITION") - p_item_end
-    
-    --item_table = GetMediaItemIndexes()
-    
-    reaper.Main_OnCommand(40006,0)--remove items
-    
-    for i = f_item_idx, reaper.CountTrackMediaItems(track) -  1 do
-        item_edit = reaper.GetTrackMediaItem(track,i)
-        reaper.SetMediaItemInfo_Value(item_edit, "D_POSITION", reaper.GetMediaItemInfo_Value(item_edit, "D_POSITION") - offset - n_item_fadein)
-    end
-    reaper.SetMediaItemInfo_Value(p_item, "C_FADEOUTSHAPE", 1)
-    reaper.SetMediaItemInfo_Value(p_item, "D_FADEOUTLEN", n_item_fadein)
-    reaper.SetMediaItemInfo_Value(reaper.GetTrackMediaItem(track,f_item_idx), "C_FADEINSHAPE", 1)
+    p_item_end = p_item ~= nil and reaper.GetMediaItemInfo_Value(p_item, "D_POSITION") + reaper.GetMediaItemInfo_Value(p_item, "D_LENGTH") or 0
 
-    
-    
---[[
-    for i, t_track in ipairs(item_table) do
+    if n_item == nil or f_item_pos > p_item_end or p_item == nil then --only need to ripple if no overlapping items, first item, or last item
+        reaper.Main_OnCommand(ripple_one_track,0)
+        reaper.Main_OnCommand(40006,0)--remove items
+    else
 
-        for j = count(t_track["itemtable"]), 1, -1 do
+        n_item_fadein = reaper.GetMediaItemInfo_Value(n_item, "D_FADEINLEN")
 
-            local curr_start = t_track["itemtable"][j]["first"]
-            local curr_end = t_track["itemtable"][j]["last"]
-            local first_item = reaper.GetTrackMediaItem(t_track["track"],curr_start)
-            local first_item_pos = reaper.GetMediaItemInfo_Value(first_item,"D_POSITION")
-            local end_item = reaper.GetTrackMediaItem(t_track["track"],curr_end)
-            local end_item_end = reaper.GetMediaItemInfo_Value(end_item,"D_POSITION") + reaper.GetMediaItemInfo_Value(end_item,"D_LENGTH")
-            local item_after_end = reaper.GetTrackMediaItem(t_track["track"],curr_end + 1)
-            local item_before_start = reaper.GetTrackMediaItem(t_track["track"],curr_start - 1)
-
-            local len = end_item_end - first_item_pos
-
-            local offset
-            if item_after_end ~= nil then
-                offset = reaper.GetMediaItemInfo_Value(item_after_end,"D_POSITION") - end_item_end
-            else
-                offset = first_item_pos - (reaper.GetMediaItemInfo_Value(item_before_start,"D_POSITION") + reaper.GetMediaItemInfo_Value(item_before_start,"D_LENGTH"))
-            end
-
-            for l = curr_start - 1, 0, -1 do
-                local item = reaper.GetTrackMediaItem(t_track["track"],l)
-                local pos = reaper.GetMediaItemInfo_Value(item,"D_POSITION")
-                reaper.SetMediaItemInfo_Value(item,"D_POSITION", pos + len + offset)
-            end
-
+        offset = reaper.GetMediaItemInfo_Value(n_item, "D_POSITION") - p_item_end
+        
+        reaper.Main_OnCommand(40006,0)--remove items
+        
+        for i = f_item_idx, reaper.CountTrackMediaItems(track) -  1 do
+            item_edit = reaper.GetTrackMediaItem(track,i)
+            reaper.SetMediaItemInfo_Value(item_edit, "D_POSITION", reaper.GetMediaItemInfo_Value(item_edit, "D_POSITION") - offset - n_item_fadein)
         end
+        reaper.SetMediaItemInfo_Value(p_item, "C_FADEOUTSHAPE", 1)
+        reaper.SetMediaItemInfo_Value(p_item, "D_FADEOUTLEN", n_item_fadein)
+        reaper.SetMediaItemInfo_Value(reaper.GetTrackMediaItem(track,f_item_idx), "C_FADEINSHAPE", 1)
 
     end
-
-    reaper.Main_OnCommand(40006,-1)]]
     
     RestoreRippleState()
     reaper.Undo_EndBlock("Delete items and reverse ripple",-1)
