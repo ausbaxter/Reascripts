@@ -25,7 +25,7 @@ function GetGroupedItemsInTable()
     for i = 0, reaper.CountSelectedMediaItems() - 1 do
         local item = reaper.GetSelectedMediaItem(0,i)
         local group_num = reaper.GetMediaItemInfo_Value(item, "I_GROUPID")
-        if not table.contains(t_grp_nums, group_num) then table.insert(t_grp_nums,group_num) end
+        if not table.contains(t_grp_nums, group_num) and group_num ~= 0 then table.insert(t_grp_nums,group_num) end
     end
     --loop through all items considering all groups
     for i = 0, reaper.CountMediaItems(0) - 1 do

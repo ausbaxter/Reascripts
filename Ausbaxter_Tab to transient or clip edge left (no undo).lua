@@ -58,6 +58,8 @@ end
 function Main()
 
   reaper.Undo_BeginBlock()
+  reaper.PreventUIRefresh(1)
+  reaper.Main_OnCommand(40289, 0)
   c_SelTracks = reaper.CountSelectedTracks(0)
   a_SelTracks = {}
   SelectAll()

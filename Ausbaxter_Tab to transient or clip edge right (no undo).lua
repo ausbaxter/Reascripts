@@ -19,8 +19,6 @@
   + Initial Release
 --]]
 
-reaper.Undo_BeginBlock()
-
 function SelectAll()
 
   for i = 0, c_SelTracks - 1 do
@@ -58,7 +56,10 @@ function SelectItemsUnderEditCursor()
 end
 
 function Main()
-
+  
+  reaper.Undo_BeginBlock()
+  reaper.PreventUIRefresh(1)
+  reaper.Main_OnCommand(40289, 0)
   c_SelTracks = reaper.CountSelectedTracks(0)
   a_SelTracks = {}
   reaper.PreventUIRefresh(1)

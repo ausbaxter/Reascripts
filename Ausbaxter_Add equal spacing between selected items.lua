@@ -20,22 +20,35 @@
 --]]
 ------------------------------Required--------------------------------------
 
-directory = ({reaper.get_action_context()})[2]:match("^(.*[/\\])")
-dofile(directory .. 'Ausbaxter_Lua functions.lua')
+--directory = ({reaper.get_action_context()})[2]:match("^(.*[/\\])")
+--dofile(directory .. 'Ausbaxter_Lua functions.lua')
 
 ----------------------------------------------------------------------------
 
+function GetSelectedItems()
+  local count = reaper.CountSelectedMediaItems(0)
+  local t = {}
+  for i = 0, count - 1 do
+    sel_item = reaper.GetSelectedMediaItem(0,i)
+    table.insert(t, sel_item)
+  end
+  return count, t
+end
+
 function Main()
   
+  
+  
   s_items_count, selected_items = GetSelectedItems()
+ 
   
   if s_items_count >= 2 then
   
-    retval, t_user_offset = GetInput("Add equal spacing between selected items", 1, {"Spacing (seconds)"}, "%d*[.]*%d*") --string pattern at end enables handling of floats
+    retval, t_user_offset = reaper.GetUserInputs("Add equal spacing between selected items", 1, "Spacing (seconds)", 0) --string pattern at end enables handling of floats
     
     if retval == true then --if user presses okay 
     
-      user_offset = t_user_offset["Spacing (seconds)"]
+      user_offset = t_user_offset
       
       for i = 2, s_items_count do
       
