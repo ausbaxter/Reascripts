@@ -1,33 +1,13 @@
---[[
- * ReaScript Name: Divide item into n equal parts
- * Description: Divides a selected item into n equal parts.
- * Instructions: Select one item, run script. Enter in the amount of items of equal length you desire.
- * Author: Ausbaxter
- * Author URI: https//:austinbaxtersound.com
- * Repository: GitHub > Ausbaxter
- * Repository URL: https://github.com/ausbaxter/Reascripts
- * File URI: https://github.com/ausbaxter/Reascripts/Ausbaxter_Divide item into n equal parts.lua
- * Licence: GPL v3
- * REAPER: 5.xx
- * Extensions: None
- * Version: 1.0
---]]
- 
---[[
- * Changelog:
- * v1.0 (2017-11-04)
-  + InitialRelease
---]]
-------------------------------Required--------------------------------------
+--@description Divide item(s) into n equal parts
+--@version 1.0
+--@author ausbaxter
+--@about
+--    # Divide item(s) into n equal parts
+--@changelog
+--  + Initial release
 
-directory = ({reaper.get_action_context()})[2]:match("^(.*[/\\])")
-dofile(directory .. 'Ausbaxter_Lua functions.lua')
-
-----------------------------------------------------------------------------
-
-function SplitItem(div)
+function SplitItem(div, item)
   
-  local item = reaper.GetSelectedMediaItem(0, 0)
   local item_pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
   local item_length = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
   local offset = item_length / div
@@ -46,26 +26,30 @@ function Main()
   local cursor_pos = reaper.GetCursorPosition()
   local item_count = reaper.CountSelectedMediaItems(0)
   
-  if item_count == 1 then
+  if item_count == 0 then
+    reaper.ReaScriptError("Must select one item to divide.")
+    return
+  end
   
-    local retval, input = GetInput("Divide item into n equal parts", 1, {"n"})
-    
-    if retval == true then
-    
-      local num = tonumber(input["n"])
-      
-      if num ~= nil then 
-        SplitItem(num)
-      else
-        reaper.ReaScriptError("Must enter a number.")
+  local retval, input = reaper.GetUserInputs("Divide item into n equal parts", 1, "n: ", "")
+  
+  if retval == true then
+  
+    local num = tonumber(input)
+    local sel_items = {}
+
+    for i = 0, item_count - 1 do
+      table.insert(sel_items, reaper.GetSelectedMediaItem(0, i))
+    end
+
+    if num ~= nil then
+      for i, item in ipairs(sel_items) do
+        SplitItem(num, item)
       end
-      
+    else
+      reaper.ReaScriptError("Must enter a number.")
     end
     
-  elseif item_count == 0 then
-    reaper.ReaScriptError("Must select one item to divide.")
-  else
-    reaper.ReaScriptError("Too many items selected. Select only one item to divide.")
   end
   
 end

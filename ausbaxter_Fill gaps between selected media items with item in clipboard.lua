@@ -1,4 +1,13 @@
-disc = "This action will fill the gaps of your currently selected items using the clipboard. "
+--@description Fill gaps between selected media items with item in clipboard
+--@version 1.0
+--@author ausbaxter
+--@about
+--    # Fill gaps between selected media items with item in clipboard
+--    This action will fill the gaps of your currently selected items using the item currently in the clipboard. If the desired item, or item area is not in the clipboard click cancel and copy the desired fill item first."
+--@changelog
+--  + Initial release
+
+disc = "This action will fill the gaps of your currently selected items using the item currently in the clipboard. "
     .. "If the desired item, or item area is not in the clipboard click cancel and copy the desired fill item first."
 disc_title = "Fill gaps in selected media items"
 

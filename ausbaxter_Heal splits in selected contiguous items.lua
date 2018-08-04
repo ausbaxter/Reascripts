@@ -1,3 +1,11 @@
+--@description Heal splits in selected contiguous items
+--@version 1.0
+--@author ausbaxter
+--@about
+--    # Heal splits in selected contiguous items 
+--    Heals any splits in selected items that can sometimes occur after using dynamic split or auto trim/split items.
+--@changelog
+--  + Initial release
 
 function GetSelectedMediaItems(item_count)
     local media_items = {
@@ -25,9 +33,7 @@ function Heal(items)
 end
 
 function Round(val)
-
-return tonumber(string.format("%.3f", val))
-
+    return tonumber(string.format("%.3f", val))
 end
 
 function SelectAffected(items)
@@ -45,7 +51,6 @@ function Main()
     media_items = GetSelectedMediaItems(item_count)
     connected_items = {}
     c_items_count = 0
-    
     affected_items = {}
     
     for i = 2, item_count do
@@ -68,7 +73,6 @@ function Main()
     
     Heal(connected_items)
     table.insert(affected_items, reaper.GetSelectedMediaItem(0,0))
-    
     SelectAffected(affected_items)
     
     reaper.Undo_EndBlock("Heal splits in connected items", 0)

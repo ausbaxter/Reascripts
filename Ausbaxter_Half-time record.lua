@@ -1,29 +1,15 @@
---[[
- * ReaScript Name: Half-time record
- * Description: Halfs playback rate and starts recording, useful for recording midi.
- * Instructions: Run this script as you would normally run the record action
- * Author: Ausbaxter
- * Author URI: https//:austinbaxtersound.com
- * Repository: GitHub > Ausbaxter
- * Repository URL: https://github.com/ausbaxter/Reascripts
- * File URI: https://github.com/ausbaxter/Reascripts/Ausbaxter_Half-time record.lua
- * Licence: GPL v3
- * REAPER: 5.xx
- * Extensions: None
- * Version: 1.0
---]]
- 
---[[
- * Changelog:
- * v1.0 (2017-11-03)
-  + Initial Release
---]]
+--@description Half-time record
+--@version 1.0
+--@author ausbaxter
+--@about
+--    # Half-time record
+--    Allows half time recording. Once started, waits for playback to stop to reset playrate.
+--@changelog
+--  + Initial release
 
---global variables
 rate = reaper.Master_GetPlayRate(0)
 half_rate = rate / 2
 
---play
 function Play ()
 
   reaper.CSurf_OnPlayRateChange(half_rate)
@@ -52,8 +38,9 @@ function Main ()
   
   Play()  
   Update()
-  
+
 end
 
+reaper.Undo_BeginBlock()
 Main()
-reaper.CSurf_FlushUndo(true)--does not work currently, undo points are still created
+reaper.Undo_EndBlock("Half-time record", -1)

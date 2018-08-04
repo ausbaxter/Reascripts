@@ -1,23 +1,11 @@
---[[
- * ReaScript Name: Group contiguous selected items into columns
- * Description: Groups selected items that overlap each other in time.
- * Instructions: Select a range of items. Run this script. Items's whos edges overlap others in time will be grouped together.
- * Author: Ausbaxter
- * Author URI: https//:austinbaxtersound.com
- * Repository: GitHub > Ausbaxter
- * Repository URL: https://github.com/ausbaxter/Reascripts
- * File URI: https://github.com/ausbaxter/Reascripts/Ausbaxter_Group contiguous selected items into columns.lua
- * Licence: GPL v3
- * REAPER: 5.xx
- * Extensions: None
- * Version: 1.0
---]]
- 
---[[
- * Changelog:
- * v1.0 (2017-11-03)
-  + Initial Release
---]]
+--@description Group contiguous selected items into columns
+--@version 1.0
+--@author ausbaxter
+--@about
+--    # Group contiguous selected items into columns
+--    Select a range of items. Run this script. Any selected item whose edges overlap others in time and across tracks will be grouped together.
+--@changelog
+--  + Initial release
 
 function Initialize()
 
