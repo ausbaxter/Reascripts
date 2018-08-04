@@ -1,3 +1,12 @@
+--@description Mouse contextual unselect [envelope, item, track, loop, time]
+--@version 1.0
+--@author ausbaxter
+--@about
+--    # Unselects or removes selected elements using mouse context. Activating in arrange and outside time selection bounds removes loop points. Within time selection bounds removes time selection. Activating while hovering over
+--      selected items deselects them, hovering over tracks deselects currently selected tracks tracks.
+--@changelog
+--  + Initial release
+
 local unsel_items = 40289
 local unsel_tracks = 40297
 local unsel_env_pts = 40331
