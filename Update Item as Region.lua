@@ -185,8 +185,6 @@ function GroupItemsInColumns()
     end
     
     reaper.Main_OnCommand(40032, 0)
-    
-    reaper.Main_OnCommand(40706, 0)
   
   end
 
@@ -290,6 +288,8 @@ function Main()
       mediaItemColumns = GetSortedItemsInColumns(selectedMediaItems)
       
       columnUpdateInfo = GetColumnUpdateValues()
+      
+      GroupItemsInColumns()
               
       reaper.UpdateArrange()
     

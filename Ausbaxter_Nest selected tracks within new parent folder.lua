@@ -1,23 +1,10 @@
- --[[
- * Name: Nest selected tracks within new parent folder
- * Description: Creates a new parent folder for the selected tracks
- * Instructions: Select tracks. Run Script. Get Coin.
- * Author: Ausbaxter
- * Author URI: https//:austinbaxtersound.com
- * Repository: GitHub > Ausbaxter > Reascripts
- * Repository URL: https://github.com/ausbaxter/Reascripts
- * File URI: https://github.com/ausbaxter/Reascripts/Ausbaxter_Nest selected tracks within new parent folder.lua
- * Licence: GPL v3
- * REAPER: 5.XX
- * Extensions: None
- * Version: 1.0
---]]
- 
---[[
- * Changelog:
- * v1.0 (2017-11-02)
-  + Initial Release
---]]
+--@description Nest selected tracks within new parent folder
+--@version 1.0
+--@author ausbaxter
+--@about
+--    # Creates a new parent folder for the selected tracks
+--@changelog
+--  + Initial release
 
 --Get useful project info
 selTrackCount = reaper.CountSelectedTracks()
