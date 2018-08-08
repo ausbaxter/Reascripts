@@ -16,7 +16,7 @@ def CreateJSONEntry(lang, gfx, base, body, documentation):
     print(s + "\n")
     json_data[base.upper() + " " + lang] = {
         "prefix": base,
-        "scope": lang,
+        "scope": lang.lower(),
         "body": s,
         "description": documentation
     }
@@ -77,11 +77,11 @@ def main():
             if empty_line_count == 2 and in_gfx == False: #Function information complete add JSON Entry. Need to know when all languages have changed (use boolean toggle per language...)
                 description_capture = False
                 if new_lua:
-                    CreateJSONEntry("Lua", False, lua_func_name, formatted_lua_parameters, documentation)
+                    CreateJSONEntry("lua", False, lua_func_name, formatted_lua_parameters, documentation)
                 if new_eel:
-                    CreateJSONEntry("EEL2", False, eel_func_name, formatted_eel_parameters, documentation)
+                    CreateJSONEntry("eel2", False, eel_func_name, formatted_eel_parameters, documentation)
                 if new_py:
-                    CreateJSONEntry("Python", False, py_func_name, formatted_py_parameters, documentation)
+                    CreateJSONEntry("python", False, py_func_name, formatted_py_parameters, documentation)
                 print("Documentation: " + documentation)
                 new_lua = False
                 new_eel = False
@@ -109,7 +109,7 @@ def main():
                             eel_definition = re.search("([\w_]+)\((.*)\)", query.group(2))
                             if query.string.find("EEL: gfx VARIABLES") != -1:
                                 in_gfx = True
-                                gfx_string = "EEL2"
+                                gfx_string = "eel2"
                             else:
                                 new_eel = True
                                 eel_func_name = eel_definition.group(1)
@@ -120,7 +120,7 @@ def main():
                             print(query.string)
                             if query.string.find("Lua: gfx VARIABLES") != -1:
                                 in_gfx = True
-                                gfx_string = "Lua"
+                                gfx_string = "lua"
                             elif query.group(2).find("=") != -1:
                                 new_lua = True
                                 lua_definition = re.match("([\w\s,._]+) = ([\w.]+)\((.*)\)", query.group(2))
@@ -189,11 +189,11 @@ def main():
         
         #need to create one last entry...
         if new_lua:
-            CreateJSONEntry("Lua", "False", lua_func_name, formatted_lua_parameters, documentation)
+            CreateJSONEntry("lua", "False", lua_func_name, formatted_lua_parameters, documentation)
         if new_lua:
-            CreateJSONEntry("EEL2", "False", eel_func_name, formatted_eel_parameters, documentation)
+            CreateJSONEntry("eel2", "False", eel_func_name, formatted_eel_parameters, documentation)
         if new_py:
-            CreateJSONEntry("Python", "False", py_func_name, formatted_py_parameters, documentation)
+            CreateJSONEntry("python", "False", py_func_name, formatted_py_parameters, documentation)
 
     with open("reaper-api.code-snippets", 'w') as out_file:
         json.dump(json_data, out_file, indent=4)
