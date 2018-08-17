@@ -75,8 +75,21 @@ function count(table)
     return count
 end
 
+function GetFadeLength(item, info_val_string)
+
+    auto_string = info_val_string:gsub("LEN", "LEN_AUTO")
+    local fade_in = reaper.GetMediaItemInfo_Value(item, auto_string)
+    if fade_in > 0 then reaper.ShowConsoleMsg(fade_in.."\n") return fade_in
+    else return reaper.GetMediaItemInfo_Value(item, "D_FADEINLEN") end
+
+end
+
 function main()
     
+    --[[TODO
+        Need to handle when item after selected item is not connected, currently it snaps to the previous item (should be space in between)
+        Should take the fade in and out shape of one of the deleted items edges.
+    ]]
 
     reaper.Undo_BeginBlock()
     reaper.PreventUIRefresh(1)
@@ -86,21 +99,27 @@ function main()
     track = reaper.GetMediaItemTrack(f_item)
     f_item_pos = reaper.GetMediaItemInfo_Value(f_item, "D_POSITION")
     f_item_idx = reaper.GetMediaItemInfo_Value(f_item, "IP_ITEMNUMBER")
-    f_item_fadein = reaper.GetMediaItemInfo_Value(f_item, "D_FADEINLEN")
-    f_item_fadeout = reaper.GetMediaItemInfo_Value(f_item, "D_FADEOUTLEN")
+    f_item_fadein = GetFadeLength(f_item, "D_FADEINLEN")--reaper.GetMediaItemInfo_Value(f_item, "D_FADEINLEN")
+    f_item_fadeout = GetFadeLength(f_item, "D_FADEOUTLEN")--reaper.GetMediaItemInfo_Value(f_item, "D_FADEOUTLEN")
     l_item = reaper.GetSelectedMediaItem(0, reaper.CountSelectedMediaItems(0)-1)
+    l_item_pos = reaper.GetMediaItemInfo_Value(l_item, "D_POSITION")
+    l_item_end = l_item_pos + reaper.GetMediaItemInfo_Value(l_item, "D_LENGTH")
     l_item_idx = reaper.GetMediaItemInfo_Value(l_item, "IP_ITEMNUMBER")
 
     n_item = reaper.GetTrackMediaItem(track,l_item_idx+1)
+    n_item_pos = reaper.GetMediaItemInfo_Value(n_item, "D_POSITION")
     p_item = reaper.GetTrackMediaItem(track,f_item_idx-1)
     p_item_end = p_item ~= nil and reaper.GetMediaItemInfo_Value(p_item, "D_POSITION") + reaper.GetMediaItemInfo_Value(p_item, "D_LENGTH") or 0
 
-    if n_item == nil or f_item_pos > p_item_end or p_item == nil then --only need to ripple if no overlapping items, first item, or last item
+    if n_item == nil or f_item_pos > p_item_end or p_item == nil or n_item_pos > l_item_end then --only need to ripple if no overlapping items, first item, or last item
         reaper.Main_OnCommand(ripple_one_track,0)
         reaper.Main_OnCommand(40006,0)--remove items
+        reaper.ShowConsoleMsg("only need to ripple\n")
     else
 
-        n_item_fadein = reaper.GetMediaItemInfo_Value(n_item, "D_FADEINLEN")
+        n_item_fadein = GetFadeLength(n_item, "D_FADEINLEN")--reaper.GetMediaItemInfo_Value(n_item, "D_FADEINLEN")
+
+        --reaper.ShowConsoleMsg(reaper.GetTakeName(reaper.GetTake(p_item, 0)))
 
         offset = reaper.GetMediaItemInfo_Value(n_item, "D_POSITION") - p_item_end
         
@@ -111,8 +130,11 @@ function main()
             reaper.SetMediaItemInfo_Value(item_edit, "D_POSITION", reaper.GetMediaItemInfo_Value(item_edit, "D_POSITION") - offset - n_item_fadein)
         end
         reaper.SetMediaItemInfo_Value(p_item, "C_FADEOUTSHAPE", 1)
-        reaper.SetMediaItemInfo_Value(p_item, "D_FADEOUTLEN", n_item_fadein)
+        reaper.SetMediaItemInfo_Value(p_item, "D_FADEOUTLEN_AUTO", n_item_fadein)
+        reaper.SetMediaItemInfo_Value(n_item, "C_FADEINSHAPE", 1)
+        reaper.SetMediaItemInfo_Value(n_item, "D_FADEINLEN_AUTO", n_item_fadein)
         reaper.SetMediaItemInfo_Value(reaper.GetTrackMediaItem(track,f_item_idx), "C_FADEINSHAPE", 1)
+        reaper.ShowConsoleMsg("excecuted, Fade In: " .. n_item_fadein .. "\n")
 
     end
     
