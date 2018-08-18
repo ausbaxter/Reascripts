@@ -1,83 +1,85 @@
----------------------------------------Display-----------------------------------------
+---------------------------------------Scaling Object Base Class-----------------------------------------
 
-Display = {}
-Display.__index = Display
+ScalingObject = {}
+ScalingObject.__index = ScalingObject
 
-function Display:New(m,scaling_func)
-    local self = setmetatable({}, Display)
-    self.x = 0
-    self.y = 0
-    self.w = 0
-    self.h = 0
-    self.margin = m == nil and 0 or m
-    self.has_dblclick = true --move to individual elements to prevent double click bug
-    self.elements = {}
-    self.update = true
-    self.scaling_func = scaling_func or nil --the graphical scaling function for the element.
-    return self
-end
+function ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer)
+    local self = setmetatable({}, ScalingObject)
+    self.x = math.floor(x)
+    self.y = math.floor(y)
+    self.w = math.floor(w)
+    self.h = math.floor(h)
 
-function Display:Add(elem,x,y,w,h)
-    local x2 = self.x + self.margin + x
-    local y2 = self.y + self.margin + y
-    local w2 = w + self.margin + x
-    local h2 = h + self.margin + y
-    table.insert(self.elements, elem.New(x2,y2,w2,h2))
-end
+    self.x_offset = x_offset or 0
+    self.y_offset = y_offset or 0
+    self.w_offset = w_offset ~= nil and w_offset - self.x_offset or -self.x_offset
+    self.h_offset = h_offset ~= nil and h_offset - self.y_offset or -self.y_offset
 
-function Display:UpdateDimensions()
-    if self.scaling_func == nil then return end
-    local x, y, w, h = self.scaling_func()
-    self.x = x
-    self.y = y
-    self.w = w - self.x
-    self.h = h - self.y
-end
-
-function Display:Draw()
-    gfx.dest = self.buffer - 1
-    SetColor(72,72,72)
-    gfx.rect(self.x, self.y, self.w, self.h, false)
-
-    gfx.dest = self.buffer
-    SetColor(51,51,51)
-    gfx.rect(self.x, self.y, self.w, self.h, true)
-    for i, elem in pairs(self.elements) do
-        elem:Draw()
-    end
-end
-
---------------------------------Macro Display SubClass------------------------------- Can make this a more generic slotted class for macro and param display to inherit from
-Slotted_Display = {}
-Slotted_Display.__index = Slotted_Display
-
-function Slotted_Display:New(scaling_func, slot_height, buffer)
-    local self = setmetatable(Display:New(0,scaling_func), Slotted_Display)
-
-    self.slot_height = slot_height
-    --self.scaling_func = scaling_func or nil
-
-    self.track_guid = ""
-
-    self.selected_index = -1
-
-    self.buffer = buffer
+    self.x_scale = self.x / gfx.w
+    self.y_scale = self.y / gfx.h
+    self.w_scale = self.w / gfx.w
+    self.h_scale = self.h / gfx.h
+    self.w_abs = gfx.w - self.w
+    self.h_abs = gfx.h - self.h
+    self.min_w = 0
+    self.min_h = 0
+    self.update_x = true
+    self.update_y = true
+    self.update_w = true
+    self.update_h = true
 
     self.lmdown = false
     self.rmdown = false
+
+    if buffer == nil then --child classes must implement their own Draw(), can use this buffer
+        self.buffer = AllocateNewBuffer()
+    elseif buffer >= -1 then
+        self.buffer = buffer
+    end
+    return self
+end
+
+function ScalingObject:UpdateDimensions()
+    self.x = self.update_x and math.floor(self.x_scale * gfx.w) + self.x_offset or self.x
+    self.w = self.update_w and math.floor(self.w_scale * gfx.w) + self.w_offset or self.w
+    self.y = self.update_y and math.floor(self.y_scale * gfx.h) + self.y_offset or self.y
+    self.h = self.update_h and math.floor(self.h_scale * gfx.h) + self.h_offset or self.h
+
+    if self.w < self.min_w then self.w = self.min_w end
+    if self.h < self.min_h then self.h = self.min_h end
+end
+
+--------------------------------Macro Display SubClass------------------------------- Can make this a more generic slotted class for macro and param display to inherit from
+
+Slotted_Display = {}
+Slotted_Display.__index = Slotted_Display
+
+function Slotted_Display:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer, slot_height)
+    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer), Slotted_Display)
+    setmetatable(Slotted_Display, {__index = ScalingObject})
+
+    self.slot_height = slot_height
+
+    self.selected_index = -1
 
     self.scroll_offset = 0
     self.elements_height = 0
 
     self.scroll_bar_h = 0
 
+    self.editable = true
+    self.allow_multi_select = false
+    self.sel_on_delete_btn = false
+
+    self.elements = {}
+    self.update = true
+
+    self:UpdateDimensions()
     --Store the height of the entire macro set to uset
     --to check if scrolling is possible or not.
     --also set y
     return self
 end
-
-setmetatable(Slotted_Display, Display)
 
 function Slotted_Display:LeftClick(index)
     if alt then
@@ -85,13 +87,12 @@ function Slotted_Display:LeftClick(index)
         self:DelSlot(index)
         return
     end
-
-    if index ~= self.selected_index then
+    if index ~= self.selected_index and self.allow_multi_select == false then
         for i, macro in pairs(self.elements) do macro.selected = false end
     end
 
     if self.elements[index] ~= nil then
-        self.elements[index]:LeftClick()
+        self.elements[index]:LeftClick(self.allow_multi_select)
         self.selected_index = index
         self.update = true
     end
@@ -117,7 +118,7 @@ function Slotted_Display:Scroll(scroll) --have to find out how to quantize the s
                     new_y = macro.orig_y
                 end                    
             end
-            macro.y = new_y
+            macro.y_offset = new_y
         end
     end
 end
@@ -129,14 +130,29 @@ function Slotted_Display:UpdateDimensions()
     else
         self.scroll_bar_h = 0
     end
-    Display.UpdateDimensions(self)
+    ScalingObject.UpdateDimensions(self)
+    for i, elem in pairs(self.elements) do
+        elem:UpdateDimensions()
+    end
 end
 
-function Slotted_Display:AddSlot(name)
-    local m = 4
+function Slotted_Display:AddSlot(name, increment, sel, margin)
+    local margin = margin or 4
     name = name or ""
-    local slot = Slot:New(self.x + m, --[[self.scroll_offset +]] self.y + (#self.elements * self.slot_height + m), self.x + self.w - m, self.slot_height - 2)
-    slot.text = name .. #self.elements + 1
+    local slot = Slot:New(0, self.y - self.y_offset, gfx.w, self.slot_height - margin,
+    self.x_offset + margin, self.y_offset + margin + (#self.elements * self.slot_height), -self.x_offset - margin)
+    slot.update_h = false
+    slot.editable = self.editable
+    if sel then
+        slot.selected = true
+        self.selected_index = #self.elements + 1
+    else
+        slot.selected = false
+    end
+    if self.allow_multi_select == false then
+        for i, macro in pairs(self.elements) do macro.selected = false end
+    end
+    slot.text = increment and name .. " " .. tostring(#self.elements + 1) or name
     self.elements_height = (#self.elements + 1) * self.slot_height
     table.insert(self.elements, slot)
     self.update = true
@@ -144,6 +160,7 @@ function Slotted_Display:AddSlot(name)
 end
 
 function Slotted_Display:DelSlot(index)
+    if self.editable == false then return end
     local m = 4
     local del_btn_clicked = false
 
@@ -162,14 +179,14 @@ function Slotted_Display:DelSlot(index)
         self.elements_height = self.elements_height - self.slot_height
         for i = index, #self.elements do
             local base_y = self.y + ((i-1) * self.slot_height + m)
-            self.elements[i].y = self.scroll_offset + base_y
+            self.elements[i].y_offset = self.scroll_offset + base_y
             self.elements[i].orig_y = base_y
         end
     end
 
     if self.elements[index] ~= nil then
         if index == self.selected_index then
-            if del_btn_clicked then
+            if del_btn_clicked and self.sel_on_delete_btn then
                 self.elements[self.selected_index].selected = true
             else
                 self.elements[self.selected_index].selected = false
@@ -186,19 +203,31 @@ end
 
 function Slotted_Display:Draw()
     if self.update then
-        gfx.setimgdim(self.buffer - 1, -1, -1)
-        gfx.setimgdim(self.buffer, -1, -1)
-        gfx.setimgdim(self.buffer - 1, self.x + self.w, self.y + self.h)
-        gfx.setimgdim(self.buffer, self.x + self.w, self.y + self.h)
-        --draw scroll bar
 
         gfx.x = 0 gfx.y = 0
-        Display.Draw(self) --call parent draw method, with any added shtuff
-        if self.scroll_bar_h > 0 then gfx.roundrect(self.x + self.w - 4, self.y + self.scroll_offset/(self.elements_height - self.h) * (self.scroll_bar_h - self.h), 4, self.scroll_bar_h-5, 2) end
+
+        gfx.setimgdim(self.buffer, -1, -1)
+        gfx.setimgdim(self.buffer, self.x + self.w, self.y + self.h)
+
+        gfx.dest = self.buffer
+
+        SetColor(51,51,51)
+        gfx.rect(self.x, self.y, self.w, self.h, true)
+    
+        for i, elem in pairs(self.elements) do
+            elem:Draw()
+        end
+
+        SetColor(72,72,72)
+        gfx.rect(self.x, self.y, self.w, self.h, false)
+
+
+        SetColor(150,150,150)
+        if self.scroll_bar_h > 0 then gfx.roundrect(self.x + self.w - 4, self.y + self.scroll_offset/(self.elements_height - self.h) * (self.scroll_bar_h - self.h), 4, self.scroll_bar_h-5, 2, true) end
+        
         self.update = false
     end
     BlitBuffer(self.buffer, self.x, self.y, self.w, self.h)
-    BlitBuffer(self.buffer-1, self.x, self.y, self.w, self.h)
     self.scroll = 0
     --gfx.blit(0,1,0,self.x, self.y, self.w + self.x, self.h + self.y, self.x, self.y, self.w + self.x, self.h + self.y)
 end
@@ -207,23 +236,28 @@ end
 Slot = {}
 Slot.__index = Slot
 
-function Slot:New(x,y,w,h)
-    local self = setmetatable({}, Slot)
-    self.x = x
-    self.y = y
-    self.w = w - self.x
-    self.h = h
-    self.orig_y = self.y
+--TODO convert into scaling object child class in order to use update dimensions. (will need to update sub.elements dimensions in base class)
+
+function Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset)
+    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset), Slot)
+    setmetatable(Slot, {__index = ScalingObject})
+    self.orig_y = self.y_offset
     self.text = ""
     self.selected = false
+    self.editable = true
     self.last_click = 0
     return self
 end
 
 --click function that stores current time and compares to last click in order to implement double click feature.
 
-function Slot:LeftClick()
-    self.selected = true
+function Slot:LeftClick(allow_multi_selection)
+    if allow_multi_selection and self.selected == true then 
+        self.selected = false
+    else
+        self.selected = true
+    end
+
     if self.last_click ~= nil and reaper.time_precise() - self.last_click < 0.4 then 
         self:DblClick() 
         self.last_click = 0 
@@ -232,10 +266,10 @@ function Slot:LeftClick()
 end
 
 function Slot:DblClick()
+    if self.editable == false then return end
     local rval, input = reaper.GetUserInputs("Rename " .. self.text, 1, "New Name:", self.text)
     if rval then
         self.text = input
-        Print("True")
     end
 end
 
@@ -252,6 +286,8 @@ function Slot:Draw()
     SetColor(slot_r,slot_g,slot_b)
     gfx.rect(self.x, self.y, self.w, self.h, true)
 
+    gfx.setfont(1, "Arial", sm_font_size)
+
     local text_width, text_height = gfx.measurestr(self.text)
 
     if text_width >= self.w then
@@ -265,63 +301,112 @@ function Slot:Draw()
     gfx.x = 0 gfx.y = 0
 end
 
+---------------------------------------Label--------------------------------------
+
+Label = {}
+Label.__index = Label
+
+function Label:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer, text, text_size)
+    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer), Label)
+    setmetatable(Label, {__index = ScalingObject})
+    self.text = text
+    self.text_size = text_size
+    self.update = false
+    self:UpdateDimensions()
+    return self
+end
+
+function Label:Draw()
+    if self.update then
+        gfx.dest = self.buffer
+        gfx.setimgdim(self.buffer, -1, -1)
+        gfx.setimgdim(self.buffer, self.x + self.w, self.y + self.h)
+        --Print("drawing button")
+
+        SetColor(36,43,43)
+        gfx.rect(self.x+1, self.y+1, self.w-2, self.h-2, true)
+
+        SetColor(170,170,170)
+        gfx.setfont(1, "Arial", self.text_size)
+        local str_w = gfx.measurestr(self.text)
+        str_h = gfx.texth
+        if str_w >= self.w then
+            gfx.x = self.x
+        else
+            gfx.x = self.x + self.w / 2 - math.floor(str_w/2)
+        end
+        --gfx.x = self.x + self.w / 2 - (str_w/2)
+        gfx.y = self.y + self.h / 2 - (str_h/2)
+        gfx.drawstr(self.text)
+        gfx.x = 0 gfx. y = 0
+
+        SetColor(51,51,51)
+        gfx.rect(self.x, self.y, self.w, self.h, false)
+
+    end
+    BlitBuffer(self.buffer, self.x, self.y, self.w - self.x, self.h, self.scroll)
+end
+
 --------------------------------------Button--------------------------------------
 
 Button = {}
 Button.__index = Button
 
-function Button.New(text,func,scaling_func,color,buffer)
-    local self = setmetatable({}, Button)
-    self.x = 0
-    self.y = 0
-    self.w = 0
-    self.h = 0
+function Button:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer, text, func, color, txt_color, bg_color)
+    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer), Button)
+    setmetatable(Button, {__index = ScalingObject})
+
     if color == -1 or color == nil then
         self.r = 1 self.g = 1 self.b = 1
     else
         self.r, self.g, self.b = reaper.ColorFromNative(color)
     end
+
     self.LeftClick = func
-    self.scaling_func = scaling_func
     self.text = text
-    self.buffer = buffer
-    self.lmdown = false
-    self.rmdown = false
     self.has_dblclick = false
     self.update = false
+    self.outline = true
+    self.bg_color = bg_color or reaper.ColorToNative(120, 120, 120)
+    self.txt_color = txt_color or reaper.ColorToNative(255, 255, 255)
+    
+    self:UpdateDimensions()
     return self
 end
 
-function Button.UpdateDimensions(self)
-    local x, y, w, h = self.scaling_func()
-    self.x = x
-    self.y = y
-    self.w = w
-    self.h = h
-end
-
-function Button.Draw(self)
+function Button:Draw()
     if self.update then
         gfx.dest = self.buffer
         gfx.setimgdim(self.buffer, -1, -1)
-        gfx.setimgdim(self.buffer, gfx.w, 50)
+        gfx.setimgdim(self.buffer, self.x + self.w, self.y + self.h)
         --Print("drawing button")
-        gfx.r = self.r gfx.g = self.g gfx.b = self.b
-        gfx.rect(self.x, self.y, self.w, self.h, false)
 
-        gfx.r = 0.4 gfx.g = 0.4 gfx.b = 0.4
+        SetColor(self.bg_color)
         gfx.rect(self.x+1, self.y+1, self.w-2, self.h-2, true)
 
-        gfx.r = 1 gfx.g = 1 gfx.b = 1
+        gfx.setfont(1, "Arial", sm_font_size)
+        SetColor(self.txt_color)
         local str_w = gfx.measurestr(self.text)
         str_h = gfx.texth
-        gfx.x = self.x + self.w / 2 - (str_w/2)
+        if str_w >= self.w then
+            gfx.x = self.x
+        else
+            gfx.x = self.x + self.w / 2 - math.floor(str_w/2)
+        end
+        --gfx.x = self.x + self.w / 2 - (str_w/2)
         gfx.y = self.y + self.h / 2 - (str_h/2)
         gfx.drawstr(self.text)
         gfx.x = 0 gfx. y = 0
+
+        if self.outline then
+            gfx.r = self.r gfx.g = self.g gfx.b = self.b
+            gfx.rect(self.x, self.y, self.w, self.h, false)
+        end
+
     end
-    BlitBuffer(self.buffer, self.x, self.y, self.w, self.h, self.scroll)
+    BlitBuffer(self.buffer, self.x, self.y, self.w - self.x, self.h, self.scroll)
 end
+
 ----------------------------------------------------------------------------
 
 function UpdateMouseStates()
@@ -386,12 +471,31 @@ function MouseIsOverlaping(element,idx)
     end
 end
 
-function GetTrack(idx)
-    if idx == 0 then
-        return reaper.GetMasterTrack(0)
-    else
-        return reaper.GetTrack(0,idx-1)
+function UpdateTrackFocus()
+    current_track = reaper.GetSelectedTrack(0, 0)
+    current_track_count = reaper.CountTracks(0)
+
+    if current_track ~= previous_track then --Print("Changed Track Selection")
+        if current_track == nil then
+            GUI_Elements["TRACK"].text = "None"
+            if current_track_count < previous_track_count then --user deleted tracks
+                Print("Deleted tracks")
+                --check track GUID's for deleted tracks... actually i guess you should store them in case user undos
+            end
+        else
+            local rval, name = reaper.GetTrackName(current_track, "")
+            GUI_Elements["TRACK"].text = name
+        end
+        GUI_Elements["TRACK"].update = true
     end
+
+    previous_track = current_track
+    previous_track_count = current_track_count
+end
+
+function ScrollToTrack()
+    reaper.SetMixerScroll(current_track)
+    reaper.Main_OnCommand(40913, 0)
 end
 
 function BlitBuffer(buffer,x,y,w,h,scroll)
@@ -400,7 +504,20 @@ function BlitBuffer(buffer,x,y,w,h,scroll)
     gfx.blit(buffer, 1, 0, x, y, w + x, h + y, x, y, w + x, h + y)
 end
 
+function AllocateNewBuffer()
+    local buffer_limit = 1024
+    for i = 0, buffer_limit - 1 do
+        if Buffer_List[i] == nil then
+            Buffer_List[i] = true
+            return i
+        end
+    end
+end
+
 function SetColor(r,g,b)
+    if g == nil and b == nil then
+        r, g, b = reaper.ColorFromNative(r)
+    end
     gfx.r, gfx.g, gfx.b = r/255,g/255,b/255
 end
 
@@ -442,9 +559,7 @@ function Main()
     char = gfx.getchar()
 
     --Check current selected (first) track
-    current_track = reaper.GetSelectedTrack(0, 0)
-    if current_track ~= previous_track then Print("Changed Track Selection") track_selection_changed = true end
-    previous_track = current_track
+    UpdateTrackFocus()
 
     UpdateMouseStates()
 
@@ -483,13 +598,14 @@ function Main()
 
         --Draw or blit GUI elements
         elem:Draw()
+        elem.update = false
     end
 
-    if init then 
-        GUI_Elements["Test"]:AddSlot("Track")
-        GUI_Elements["Test"]:AddSlot("Items")
-        GUI_Elements["Test"]:AddSlot("Envelopes")
-    end
+    -- if init then 
+    --     GUI_Elements["Test"]:AddSlot("Track")
+    --     GUI_Elements["Test"]:AddSlot("Items")
+    --     GUI_Elements["Test"]:AddSlot("Envelopes")
+    -- end
 
     prev_track_name = track_name
     previous_width = current_height
@@ -503,8 +619,8 @@ end
 
 reaper.atexit(function()gfx.quit()end)
 
-global_w = 650
-global_h = 200
+global_w = 150
+global_h = 800
 global_x = 400
 global_y = 400
 
@@ -519,22 +635,39 @@ last_clicked_element = nil
 last_clicked_sub_element = nil
 
 GUI_Elements = {}
+Buffer_List = {} --stores currently used buffers
 
 button_height = 15
 
 gfx.clear = reaper.ColorToNative(51, 51, 51)
 
 os = reaper.GetOS()
-if os == "Win32" or os == "Win64" then font_size = 13 else font_size = 11 end
+if os == "Win32" or os == "Win64" then sm_font_size = 13 lg_font_size = 16 else sm_font_size = 11 lg_font_size = 14 end
 
-gfx.setfont(1, "Arial", font_size)
 
-gfx.init("Macro Control", global_w, global_h, 0, global_x, global_y)
 
-GUI_Elements["Macro_Display"] = Slotted_Display:New(Macro_Display_Dimensions, 20, 1)
-GUI_Elements["Macro_Add_Button"] = Button.New("Add", function() GUI_Elements["Macro_Display"]:AddSlot() end, Macro_Add_Button_Dimensions, reaper.ColorToNative(0, 0, 0),2)
-GUI_Elements["Macro_Del_Button"] = Button.New("Del", function() GUI_Elements["Macro_Display"]:DelSlot() end, Macro_Del_Button_Dimensions, reaper.ColorToNative(0, 0, 0),2)
-GUI_Elements["Test"] = Slotted_Display:New(function() return 150, 50, 300, 150 end, 25, 5)
+gfx.init("Track Versions", global_w, global_h, 0, global_x, global_y)
+
+GUI_Elements["DISP_TK_VERSIONS"] = Slotted_Display:New(0, 0, global_w, global_h, 10, 85, -10, -180, nil, 25)
+
+GUI_Elements["DISP_RECALL"] = Slotted_Display:New(0, global_h, global_w, 0, 10, -115, -10, -10, nil, 25)
+GUI_Elements["DISP_RECALL"].editable = false
+GUI_Elements["DISP_RECALL"].update_h = false
+GUI_Elements["DISP_RECALL"].allow_multi_select = true
+
+--will want to store last gui selection states when opening and closing version gui
+GUI_Elements["DISP_RECALL"]:AddSlot("Track", false, true)
+GUI_Elements["DISP_RECALL"]:AddSlot("Track FX", false, true)
+GUI_Elements["DISP_RECALL"]:AddSlot("Items", false, true)
+GUI_Elements["DISP_RECALL"]:AddSlot("Envelopes", false, true)
+
+GUI_Elements["BUT_ADD_VERSION"] = Button:New(0, 0, global_w/2, 0, 10, 60, -2, 80, nil, "Add Version", function() GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Version", true, true) end, reaper.ColorToNative(0, 0, 0))
+GUI_Elements["BUT_DEL_VERSION"] = Button:New(global_w/2, 0, global_w/2, 0, 2, 60, -10, 80, nil, "Del Version", function() GUI_Elements["DISP_TK_VERSIONS"]:DelSlot() end, reaper.ColorToNative(0, 0, 0))
+
+GUI_Elements["HEADER"] = Label:New(0, 0, global_w, 5, 10, 10, -10, 30, nil, "Track Versions", lg_font_size)
+GUI_Elements["TRACK"] = Button:New(0, 0, global_w, 5, 10, 35, -10, 52, nil, "", ScrollToTrack, reaper.ColorToNative(0, 0, 0), reaper.ColorToNative(170, 170, 170),reaper.ColorToNative(34, 43, 43))
+GUI_Elements["TRACK"].outline = false
+UpdateTrackFocus()
 
 --GUI_Elements["Param_Display"] = Display.New(0, Param_Display_Dimensions)
 --GUI_Elements["Scale_Display"] = Display.New(0, Scale_Display_Dimensions)
