@@ -135,7 +135,7 @@ end
 function Slotted_Display:AddSlot(name)
     local m = 4
     name = name or ""
-    local slot = Slot.New(self.x + m, --[[self.scroll_offset +]] self.y + (#self.elements * self.slot_height + m), self.x + self.w - m, self.slot_height - 2)
+    local slot = Slot:New(self.x + m, --[[self.scroll_offset +]] self.y + (#self.elements * self.slot_height + m), self.x + self.w - m, self.slot_height - 2)
     slot.text = name .. #self.elements + 1
     self.elements_height = (#self.elements + 1) * self.slot_height
     table.insert(self.elements, slot)
@@ -207,7 +207,7 @@ end
 Slot = {}
 Slot.__index = Slot
 
-function Slot.New(x,y,w,h)
+function Slot:New(x,y,w,h)
     local self = setmetatable({}, Slot)
     self.x = x
     self.y = y
