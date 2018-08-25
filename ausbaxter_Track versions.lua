@@ -128,12 +128,15 @@ function Slotted_Display:LeftClick(index)
                 --UPON LOADING FROM EXT STATE SUBTRACKS IS NIL HERE NOT SURE WHY.
                 
                 for i, tk_tbl in ipairs(self.elements[index].sub_tracks) do
-                    Print("iterating through subtracks " .. i .. "\n")
-                    local new_chunk_tbl = UpdateChunkTable(tk_tbl[2], self.sub_tracks)
+                    --Print("iterating through subtracks " .. i .. "\n: " .. tostring(self.sub_tracks[i]))
+                    local new_chunk_tbl = UpdateChunkTable(tk_tbl[2], self.sub_tracks[2])
                     local str = ConvertChunkToString(new_chunk_tbl)
-                    Print(str..">")
-                    reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, tk_tbl[1]), str, false)
+                    -- Print(str..">")
+                    reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, tk_tbl[1]), str .. ">", false)
                 end
+
+                self.sub_tracks = self.elements[index].sub_tracks
+
                 --Print("out of subtrack iteration")
                 --iterate through sub_tracks
             end
@@ -206,15 +209,17 @@ function Slotted_Display:AddSlot(name, increment, sel, margin, tag)
     self.x_offset + margin, self.y_offset + margin + (#self.elements * self.slot_height), -self.x_offset - margin, nil, tag)
     slot.update_h = false
     slot.editable = self.editable
+    if self.allow_multi_select == false then
+        for i, macro in pairs(self.elements) do macro.selected = false end
+    end
+
     if sel then
         slot.selected = true
         self.selected_index = #self.elements + 1
     else
         slot.selected = false
     end
-    if self.allow_multi_select == false then
-        for i, macro in pairs(self.elements) do macro.selected = false end
-    end
+    
     slot.text = increment and name .. " " .. tostring(#self.elements + 1) or name
     self.elements_height = (#self.elements + 1) * self.slot_height
     table.insert(self.elements, slot)
@@ -587,7 +592,7 @@ function GetTrackChunkSeparated(chunk)
     end
     if carrot_count == 3 then 
         item_string = item_string:sub(1,-2)
-        Print("fixed 3rd ending carrot")
+        --Print("fixed 3rd ending carrot")
     end
 
     --Print("Track \n\n" .. track_string .. "\n\n envelope string: \n\n" .. envelope_string .. "\n\nfx_string:\n\n" .. fx_string .. "\n\nitem_string:\n\n" .. item_string .. "\n\n")
@@ -599,10 +604,10 @@ function SaveTrackVersions()
     local count = 0
     local csv = ""
     for i, elem in ipairs(GUI_Elements["DISP_TK_VERSIONS"].elements) do -- save all versions
-        local idx = count
+        local idx = elem.selected and 1 or 0
         local name = elem.text
         local chunk = ConvertChunkToString(elem.chunk)
-        --Print("Save Chunk: \n\n\n\n" .. name .. "\n\n" .. chunk .. "\n\nEnd Save Chunk\n\n\n\n")
+        Print("Save Chunk: \n\n\n\n" .. name .. "\n\n" .. chunk .. "\n\nEnd Save Chunk\n\n\n\n")
         local subtracks = ""
         subtracks = "["
         if elem.sub_tracks ~= nil and #elem.sub_tracks > 0 then
@@ -611,6 +616,7 @@ function SaveTrackVersions()
                 subtracks = subtracks .. "[" .. tk[1] .. ";" .. ConvertChunkToString(tk[2])
             end
         end
+        Print("Saving idx: " .. idx .. "\n\n")
         csv = csv .. "[" .. idx .. ";" .. name .. ";" .. chunk .. subtracks .. "]|"
         count = count + 1
     end
@@ -627,6 +633,7 @@ function LoadTrackVersions(ext_state) -- "|" delimits versions
         version = version:sub(2)
         local k = 1
         local idx = 0
+        local last_sel = false
         local name = ""
         local chunk = "" --csv
         local sub_tracks = {} --table of guid/csv
@@ -634,12 +641,13 @@ function LoadTrackVersions(ext_state) -- "|" delimits versions
         for substring in string.gmatch(version, "[^;%[%]]+") do
             --reaper.ShowConsoleMsg(substring .. "\n\n\n")
             if k == 1 then
-                idx = substring
+                if substring == "1" then last_sel = true end
+                Print("Loading, is selected: " .. tostring(last_sel) .. "\n\n")
             elseif k == 2 then
                 name = substring
             elseif k == 3 then
                 chunk = GetTrackChunkSeparated(substring)
-                Print("Load Chunk: \n\n\n\n" .. name .. "\n\n" .. chunk[4] .. "\n\nEnd Load Chunk\n\n\n\n")
+                --Print("Load Chunk: \n\n\n\n" .. name .. "\n\n" .. chunk[4] .. "\n\nEnd Load Chunk\n\n\n\n")
             elseif k > 3 and k % 2 == 0 then
                 idx = substring
             elseif k > 3 and k % 2 ~= 0 then
@@ -651,7 +659,7 @@ function LoadTrackVersions(ext_state) -- "|" delimits versions
             end
             k = k + 1
         end
-        version_table[i] = {name = name, chunk = chunk, sub_tracks = sub_tracks} --this will be stored in the slot class
+        version_table[i] = {sel = last_sel, name = name, chunk = chunk, sub_tracks = sub_tracks} --this will be stored in the slot class
         i = i + 1
     end
     return version_table
@@ -684,7 +692,7 @@ function UpdateTrackFocus()
             GUI_Elements["TRACK"].text = name
             GUI_Elements["DISP_TK_VERSIONS"].track_guid = reaper.GetTrackGUID(current_track)
 
-            Print("On track : " .. GUI_Elements["DISP_TK_VERSIONS"].track_guid .. "\n\n")
+            -- Print("On track : " .. GUI_Elements["DISP_TK_VERSIONS"].track_guid .. "\n\n")
 
             local retval, load_state = reaper.GetProjExtState(0, "ausbaxter_Track Versions", GUI_Elements["DISP_TK_VERSIONS"].track_guid)
             --Print("load state = " .. tostring(load_state))
@@ -692,17 +700,21 @@ function UpdateTrackFocus()
             if retval == 1 then --Load table needs to iterate the new version,version table
                 local version_table = LoadTrackVersions(load_state)
                 -- Print(load_state)
-                Print("Loading State:")
+                -- Print("Loading State:")
                 -- Print(#version_table)
+                local selected_index = -1
                 for i, version in ipairs(version_table) do
                     --need to recall selected version in order to fill the current version chunk in the display class (its called on left click)
-                    --Print("adding to table " .. i)
-                    GUI_Elements["DISP_TK_VERSIONS"]:AddSlot(version.name, false, false, nil, "version")
+                    Print("adding to table " .. i)
+                    if version.sel then selected_index = i end
+                    GUI_Elements["DISP_TK_VERSIONS"]:AddSlot(version.name, false, version.sel, nil, "version")
                     --Print(version.chunk)
                     GUI_Elements["DISP_TK_VERSIONS"].elements[i].chunk = version.chunk
                     --Print("Load on track change " .. tostring(version.sub_tracks[1][1])) --version.sub_tracks is nil...
-                    GUI_Elements["DISP_TK_VERSIONS"].elements[i].sub_tracks = version.sub_tracks --subtracks are currently strings
+                    GUI_Elements["DISP_TK_VERSIONS"].elements[i].sub_tracks = version.sub_tracks
+                    --set active last active version as current
                 end
+                if selected_index > 0 then GUI_Elements["DISP_TK_VERSIONS"].elements[selected_index].selected = true end
             end
 
             --check if ext state data exists already for selected track, don't do what follows
