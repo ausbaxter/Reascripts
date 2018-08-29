@@ -54,7 +54,7 @@ function Main()
     affected_items = {}
     
     for i = 2, item_count do
-        if Round(media_items.i_end[i-1]) == Round(media_items.i_start[i]) then
+        if Round(media_items.i_end[i-1]) >= Round(media_items.i_start[i]) then
             if #connected_items == 0 then
                 c_items_count = c_items_count + 1
                 table.insert(connected_items, media_items.item[i-1])
