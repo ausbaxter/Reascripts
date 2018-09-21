@@ -1,22 +1,42 @@
+function IsMuted(track)
+    if reaper.GetMediaTrackInfo_Value(track, "B_MUTE") == 1 then return true end
+    local track_check = reaper.GetParentTrack(track)
+    while(track_check ~= nil) do
+        if reaper.GetMediaTrackInfo_Value(track_check, "B_MUTE") == 1 then return true end
+        track_check = reaper.GetParentTrack(track_check)
+    end
+    return false
+end
+
+function DeleteInvalidRegions(full)
+    for i, rgn in pairs(region_items) do
+        local item = reaper.BR_GetMediaItemByGUID(0, i)
+        local exists = reaper.ValidatePtr2(0, item, "MediaItem*")
+        if exists == false or reaper.GetMediaTrackInfo_Value(reaper.GetMediaItem_Track(item), "I_FOLDERDEPTH") ~= 1 then
+            reaper.DeleteProjectMarker(0, rgn, true)
+            if full then
+                region_items[i] = nil
+                region_indexes[rgn] = false
+            end
+            num_region_items = num_region_items - 1
+        end
+    end
+end
+
 function main()
     local state = reaper.GetProjectStateChangeCount(0)
     if prev_state == nil or prev_state ~= state then
-        for i = 0, reaper.CountTracks(0) - 1 do
+        num_tracks = reaper.CountTracks(0)
+        if prev_num_tracks ~= nil and prev_num_tracks > num_tracks then
+            DeleteInvalidRegions(false)
+        end
+        for i = 0, num_tracks - 1 do
             local track = reaper.GetTrack(0, i)
             local track_guid = reaper.GetTrackGUID(track)
             if reaper.GetMediaTrackInfo_Value(track, "I_FOLDERDEPTH") == 1 then
                 local item_count = reaper.CountTrackMediaItems(track)
                 if  prev_count[track_guid] ~= nil and prev_count[track_guid] > item_count then
-                    for i, rgn in pairs(region_items) do
-                        local item = reaper.BR_GetMediaItemByGUID(0, i)
-                        local exists = reaper.ValidatePtr2(0, item, "MediaItem*")
-                        if exists == false or reaper.GetMediaTrackInfo_Value(reaper.GetMediaItem_Track(item), "I_FOLDERDEPTH") ~= 1 then
-                            reaper.DeleteProjectMarker(0, rgn, true)
-                            region_items[i] = nil
-                            region_indexes[rgn] = false
-                            num_region_items = num_region_items - 1
-                        end
-                    end
+                    DeleteInvalidRegions(true)
                 end
                 for j = 0, item_count - 1 do
                     local item = reaper.GetTrackMediaItem(track, j)
@@ -29,7 +49,10 @@ function main()
                         local r_col = reaper.GetMediaItemInfo_Value(item, "I_CUSTOMCOLOR")
                         local _, c_marks, c_rgns = reaper.CountProjectMarkers(0)
                         if region_items[item_guid] ~= nil then
-                            reaper.SetProjectMarker3(0, region_items[item_guid], true, r_in, r_out, r_name, r_col)
+                            local retval = reaper.SetProjectMarker3(0, region_items[item_guid], true, r_in, r_out, r_name, r_col)
+                            if not retval then
+                                reaper.AddProjectMarker2(0, true, r_in, r_out, r_name, region_items[item_guid], r_col)
+                            end
                         else
                             local index = start_index
                             for i = start_index, start_index + num_region_items do
@@ -39,9 +62,20 @@ function main()
                                     break
                                 end
                             end
-                            region_items[item_guid] = reaper.AddProjectMarker2(0, true, r_in, r_out, r_name, index, r_col)
+                            reaper.AddProjectMarker2(0, true, r_in, r_out, r_name, index, r_col)
+                            region_items[item_guid] = index
                             region_indexes[index] = true
                             num_region_items = num_region_items + 1
+                        end
+                    end
+                end
+
+                if IsMuted(track) then
+                    for j = 0, item_count - 1 do
+                        local item = reaper.GetTrackMediaItem(track, j)
+                        local item_guid = reaper.BR_GetMediaItemGUID(item)
+                        if region_items[item_guid] ~= nil then
+                            reaper.DeleteProjectMarker(0, region_items[item_guid], true)
                         end
                     end
                 end
@@ -49,6 +83,7 @@ function main()
             end
         end
     end
+    prev_num_tracks = num_tracks
     prev_state = state
     reaper.defer(main)
 end
@@ -88,6 +123,8 @@ prev_count = {}
 
 ext_state_del = {}
 st = 0
+
+--reaper.SetProjExtState(0, ext_state, "", "")
 
 while true do
     retval, key, val = reaper.EnumProjExtState(0, ext_state, st)

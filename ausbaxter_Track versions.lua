@@ -112,6 +112,10 @@ function ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, b
 end
 
 function ScalingObject:UpdateDimensions()
+    --[[
+        If update_? is set to true both ? and ?_offset values are used to calculate coordinates.
+        Otherwise, ?_offset values are ignored.
+    ]]
     self.x = self.update_x and math.floor(self.x_scale * gfx.w) + self.x_offset or self.x
     self.w = self.update_w and math.floor(self.w_scale * gfx.w) + self.w_offset or self.w
     self.y = self.update_y and math.floor(self.y_scale * gfx.h) + self.y_offset or self.y
@@ -165,74 +169,94 @@ function Slotted_Display:LeftClick(index)
     end
 
     if self.elements[index] ~= nil then
-
-        --theres a better way to use tags, like on the display itself instead of every element
-        if self.elements[index].tag == "version" and self.elements[index].selected == false then
-    
-            --Print(tostring(self.track_guid))
-
-            if self.track_guid == nil then return end
-
-            --Update The Previous Version Here-----------------------------------------------------------------
-
-            --Print("load version chunks")
-
-            local version_chunk = self.elements[index].chunk
-
-            version_chunk = UpdateChunkTable(version_chunk, self.chunk) --check what to recall
-    
-            if version_chunk == -1 then Print("Must have 1 setting to recall. will implement a check during multiselection on display that prevents this altogether") return end
-            --Print(version_chunk)
-
-            local version_chunk_str = ConvertChunkToString(version_chunk) .. ">"
-
-            reaper.PreventUIRefresh(1)
-
-            reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, self.track_guid), version_chunk_str, false)
-            --reflect active settings
-            --Print("Recall Version: \n\n\n\n" .. version_chunk_str .. "\n")
-            self.chunk = version_chunk
-
-            if #self.elements[index].sub_tracks > 0 then
-                --Print("load chunks into subtracks")
-                --[TODO]
-                
-                --UPON LOADING FROM EXT STATE SUBTRACKS IS NIL HERE NOT SURE WHY.
-                
-                for i, tk_tbl in ipairs(self.elements[index].sub_tracks) do
-                    --Print("iterating through subtracks " .. i .. "\n: " .. tostring(self.sub_tracks[i]))
-                    local new_chunk_tbl = UpdateChunkTable(tk_tbl[2], self.sub_tracks[2])
-                    local str = ConvertChunkToString(new_chunk_tbl)
-                    -- Print(str..">")
-                    reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, tk_tbl[1]), str .. ">", false)
-                end
-
-                self.sub_tracks = self.elements[index].sub_tracks
-
-                --Print("out of subtrack iteration")
-                --iterate through sub_tracks
-            end
-
-            reaper.UpdateArrange()
-            reaper.TrackList_AdjustWindows(false)
-            reaper.PreventUIRefresh(-1)
-        end
-
-        if index ~= self.selected_index and self.allow_multi_select == false then
-            for i, macro in pairs(self.elements) do macro.selected = false end
-        end
-
-        if self.allow_multi_select and self.elements[index].selected == true then 
-            self.elements[index].selected = false
-        else
-            self.elements[index].selected = true
-        end
-
+        
         self.elements[index]:LeftClick(self.allow_multi_select)
+
+        --self:CalculateElementHeight()
+
+        Print(self.elements_height)
+
+        -- --theres a better way to use tags, like on the display itself instead of every element
+        -- if self.elements[index].tag == "version" and self.elements[index].selected == false then
+    
+        --     --Print(tostring(self.track_guid))
+
+        --     if self.track_guid == nil then return end
+
+        --     --Update The Previous Version Here-----------------------------------------------------------------
+
+        --     --Print("load version chunks")
+
+        --     local version_chunk = self.elements[index].chunk
+
+        --     version_chunk = UpdateChunkTable(version_chunk, self.chunk) --check what to recall
+    
+        --     if version_chunk == -1 then Print("Must have 1 setting to recall. will implement a check during multiselection on display that prevents this altogether") return end
+        --     --Print(version_chunk)
+
+        --     local version_chunk_str = ConvertChunkToString(version_chunk) .. ">"
+
+        --     reaper.PreventUIRefresh(1)
+
+        --     reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, self.track_guid), version_chunk_str, false)
+        --     --reflect active settings
+        --     --Print("Recall Version: \n\n\n\n" .. version_chunk_str .. "\n")
+        --     self.chunk = version_chunk
+
+        --     if #self.elements[index].sub_tracks > 0 then
+        --         --Print("load chunks into subtracks")
+        --         --[TODO]
+                
+        --         --UPON LOADING FROM EXT STATE SUBTRACKS IS NIL HERE NOT SURE WHY.
+                
+        --         for i, tk_tbl in ipairs(self.elements[index].sub_tracks) do
+        --             --Print("iterating through subtracks " .. i .. "\n: " .. tostring(self.sub_tracks[i]))
+        --             local new_chunk_tbl = UpdateChunkTable(tk_tbl[2], self.sub_tracks[2])
+        --             local str = ConvertChunkToString(new_chunk_tbl)
+        --             -- Print(str..">")
+        --             reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, tk_tbl[1]), str .. ">", false)
+        --         end
+
+        --         self.sub_tracks = self.elements[index].sub_tracks
+
+        --         --Print("out of subtrack iteration")
+        --         --iterate through sub_tracks
+        --     end
+
+        --     reaper.UpdateArrange()
+        --     reaper.TrackList_AdjustWindows(false)
+        --     reaper.PreventUIRefresh(-1)
+        -- end
+
+        -- if index ~= self.selected_index and self.allow_multi_select == false then
+        --     for i, macro in pairs(self.elements) do macro.selected = false end
+        -- end
+
+        -- if self.allow_multi_select and self.elements[index].selected == true then 
+        --     self.elements[index].selected = false
+        -- else
+        --     self.elements[index].selected = true
+        -- end
+
         self.selected_index = index
         self.update = true
     end
 
+end
+
+function Slotted_Display:CalculateElementHeight()
+    --should be recursive to handle nested parent track versions.
+    self.elements_height = 0
+    for i, slot in ipairs(self.elements) do
+        slot.y_offset = self.y + self.elements_height
+        self.elements_height = self.elements_height + slot.total_height
+        if slot.slots ~= nil then
+            for j, sub in ipairs(slot.slots) do
+                sub.y_offset = self.y + self.elements_height
+                self.elements_height = self.elements_height + slot.total_height
+            end
+        end
+    end
 
 end
 
@@ -254,9 +278,12 @@ function Slotted_Display:Scroll(scroll) --have to find out how to quantize the s
                 elseif self.scroll_offset < 0 then --not complete
                     self.scroll_offset = 0
                     new_y = macro.orig_y
-                end                    
+                end
             end
-            macro.y_offset = new_y
+            Print(new_y)
+            macro.y = new_y
+            macro.update = true
+            macro:UpdateDimensions()
         end
     end
 end
@@ -272,12 +299,14 @@ function Slotted_Display:UpdateDimensions()
     for i, elem in pairs(self.elements) do
         elem:UpdateDimensions()
     end
+
 end
 
-function Slotted_Display:AddSlot(name, increment, sel, margin, tag)
+function Slotted_Display:AddSlot(name, increment, sel, margin, tag, class)
     local margin = margin or 4
     name = name or ""
-    local slot = Slot:New(0, self.y - self.y_offset, gfx.w, self.slot_height - margin,
+    s = class or Slot
+    local slot = s:New(0, self.y - self.y_offset, gfx.w, self.slot_height - margin,
     self.x_offset + margin, self.y_offset + margin + (#self.elements * self.slot_height), -self.x_offset - margin, nil, tag)
     slot.update_h = false
     slot.editable = self.editable
@@ -373,11 +402,166 @@ function Slotted_Display:Draw()
     --gfx.blit(0,1,0,self.x, self.y, self.w + self.x, self.h + self.y, self.x, self.y, self.w + self.x, self.h + self.y)
 end
 
----------------------------------------Macro-----------------------------------------
+---------------------------------Expandable Slot------------------------------------
+
+Ex_Slot = {}
+Ex_Slot.__index = Ex_Slot
+
+function Ex_Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
+    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset), Ex_Slot)
+    setmetatable(Ex_Slot, {__index = ScalingObject})
+    self.orig_y = self.y_offset
+    self.total_height = h
+    self.text = ""
+    self.tag = tag or ""
+    self.slots = {}
+    self.show = true
+    self.slot_height = 25
+
+    return self
+end
+
+function Ex_Slot:LeftClick()
+    if self.show then
+        self.show = false
+        self.total_height = self.slot_height
+    else
+        self.show = true
+        self.total_height = (#self.slots + 1) * self.slot_height
+    end
+    Print("Expand or Contract ExSlot " .. self.text)
+    return self.total_height
+end
+
+function Ex_Slot:AddSlot(name, increment, sel, margin, class) --Needs to be able to add Ex_Slot to itself and update slot positions correctly.
+    local margin = margin or 4
+    class = class or Slot
+    name = name or ""
+    local x = 0
+    local y = 0
+    local w = gfx.w
+    local h = self.slot_height - margin
+    local x_offset = self.x_offset + (2*margin)
+    local y_offset = 0
+
+    if self.show then 
+        --self.total_height = (#self.slots + 1) * self.slot_height
+        function GetSlotHeight(slot)
+            local total_height = self.slot_height
+            for i, s in ipairs(slot.slots) do
+                local h = 0
+                if s.slots ~= nil and s.show then
+                    h = GetSlotHeight(s)
+                else
+                    h = self.slot_height
+                end
+                total_height = total_height + h
+            end
+            return total_height
+        end
+
+        self.total_height = GetSlotHeight(self)
+
+    end
+
+    Print(name .. " og total height: " .. self.total_height .. " > og slot height: " .. self.slot_height)
+
+
+    if self.total_height > self.slot_height then
+        y_offset = self.y + self.total_height
+        Print("inserting respecting total height: " .. self.y .. " + " .. self.total_height)
+    else
+        y_offset = self.y + ((#self.slots + 1) * self.slot_height)
+        Print("inserting respecting slot height sum: " .. self.y .. " + " .. ((#self.slots + 1) * self.slot_height))
+    end
+
+    local w_offset = -self.x_offset - (2*margin)
+    local h_offset = 0
+    --local slot = class:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
+    local slot = class:New(0,y_offset, w, h, x_offset, 0, w_offset, 0, tag)
+    slot.update_y = false
+    slot.update_h = false
+    
+    -- Print("New Slot at Position: \nX: " .. x .. "\nY: " .. y .. "\nW: " .. w .. "\nH: "
+    -- .. h .. "\nX Offset: " .. x_offset .. "\nY Offset: " .. y_offset .. "\n")
+
+    if self.allow_multi_select == false then
+        for i, macro in pairs(self.elements) do macro.selected = false end
+    end
+
+    if sel then
+        slot.selected = true
+        self.selected_index = #self.slots + 1
+    else
+        slot.selected = false
+    end
+    
+    slot.text = increment and name .. " " .. tostring(#self.slots + 1) or name
+    table.insert(self.slots, slot)
+    self.update = true
+
+    --GUI_Elements["DISP_TK_VERSIONS"]:CalculateElementHeight()
+
+
+    Print("Inserting at: " .. y_offset .. "\nTotal Height: " .. self.total_height)
+
+    -- GUI_Elements["DISP_TK_VERSIONS"].elements_height = 0
+    -- for i, slot in ipairs(GUI_Elements["DISP_TK_VERSIONS"].elements) do
+    --     slot.y_offset = GUI_Elements["DISP_TK_VERSIONS"].y + GUI_Elements["DISP_TK_VERSIONS"].elements_height + 4
+    --     GUI_Elements["DISP_TK_VERSIONS"].elements_height = GUI_Elements["DISP_TK_VERSIONS"].elements_height + slot.total_height
+    -- end
+
+    --save to project ex state??
+end
+
+function Ex_Slot:UpdateDimensions()
+    ScalingObject.UpdateDimensions(self)
+    for i, elem in pairs(self.slots) do
+        elem:UpdateDimensions()
+       --elem.y = self.y + (i * self.slot_height)
+    end
+end
+
+function Ex_Slot:Draw()
+    local text_r, text_g, text_b
+    local slot_r, slot_g, slot_b
+    text_r = 170 text_g = 170 text_b = 170
+    slot_r = 36 slot_g = 43 slot_b = 43
+
+    SetColor(slot_r,slot_g,slot_b)
+    gfx.rect(self.x, self.y, self.w, self.h, true)
+
+    SetColor(text_r,text_g,text_b)
+    gfx.rect(self.x, self.y, self.w, self.h, false)
+
+    local r_edge = self.x+self.w
+    local b_edge = self.y+(self.h/2)
+    
+    if self.show then
+        gfx.triangle(r_edge-15, b_edge-2, r_edge-10, b_edge+3, r_edge-5, b_edge-2)
+        for i, slot in ipairs(self.slots) do slot:Draw() end
+    else
+        gfx.triangle(r_edge-15, b_edge+3, r_edge-10, b_edge-2, r_edge-5, b_edge+3)
+    end
+
+    gfx.setfont(1, "Arial", sm_font_size)
+
+    local text_width, text_height = gfx.measurestr(self.text)
+
+    if text_width >= self.w then
+        gfx.x = self.x
+    else
+        gfx.x = self.x + self.w / 2 - math.floor(text_width/2)
+    end
+    gfx.y = self.y + self.h / 2 - math.floor(text_height/2)
+    SetColor(text_r,text_g,text_b)
+    gfx.drawstr(self.text)
+    gfx.x = 0 gfx.y = 0
+end
+
+---------------------------------------Slot-----------------------------------------
 Slot = {}
 Slot.__index = Slot
-
---TODO convert into scaling object child class in order to use update dimensions. (will need to update sub.elements dimensions in base class)
 
 function Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
     local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset), Slot)
@@ -388,6 +572,7 @@ function Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
     self.editable = true
     self.last_click = 0
     self.tag = tag or ""
+    self.update_h = false
 
     self.chunk = {}
     self.sub_tracks = {}
@@ -429,7 +614,6 @@ function Slot:Draw()
     gfx.rect(self.x, self.y, self.w, self.h, true)
 
     gfx.setfont(1, "Arial", sm_font_size)
-
     local text_width, text_height = gfx.measurestr(self.text)
 
     if text_width >= self.w then
@@ -592,24 +776,31 @@ function UpdateMouseStates()
     gfx.mouse_wheel = 0
 end
 
-function MouseIsOverlaping(element,idx)
+function MouseIsOverlapping(element)
     local function Overlap(elem)
         return gfx.mouse_x >= elem.x and gfx.mouse_x <= elem.x+elem.w and gfx.mouse_y >= elem.y and gfx.mouse_y <= elem.y+elem.h
     end
 
+    local function GetOverlappedElement(element) --TODO -create recursive overlap check to activate nested sub elements (need to handle things that aren't shown)
+        for i, sub_elem in ipairs(element) do
+            if Overlap(sub_elem) then return true, sub_elem end
+            if sub_elem.slots ~= nil and sub_elem.show then 
+                --Print("in slot table")
+                retval, elem = GetOverlappedElement(sub_elem.slots)
+                if retval then return retval, elem end
+            end
+        end
+        return false, nil
+    end
+
     if Overlap(element) then
         if element.elements ~= nil then
-            for i, sub_elem in pairs(element.elements) do
-                if Overlap(sub_elem) then
-                    return true, idx, i
-                end
-            end
-            return true, idx, nil
+            return GetOverlappedElement(element.elements)
         else
-            return true, idx, nil
+            return true, element
         end
     else
-        return false, nil, nil
+        return false, nil
     end
 end
 
@@ -748,7 +939,7 @@ function UpdateTrackFocus()
             GUI_Elements["TRACK"].text = "None"
             --SaveTrackVersions()
             --save just to main table, if auto save is on
-            GUI_Elements["DISP_TK_VERSIONS"].track_guid = nil
+            --GUI_Elements["DISP_TK_VERSIONS"].track_guid = nil
             --GUI_Elements["DISP_TK_VERSIONS"].elements = {}
             if current_track_count < previous_track_count then --user deleted tracks
                 Print("Deleted tracks")
@@ -756,73 +947,30 @@ function UpdateTrackFocus()
             end
         else
 
-            --Save The State to EXT State
-            if GUI_Elements["DISP_TK_VERSIONS"].track_guid ~= nil and #GUI_Elements["DISP_TK_VERSIONS"][GUI_Elements["DISP_TK_VERSIONS"].track_guid].elements > 0 then
-                Print("save")
-                --SaveTrackVersions()
-                --use guid and selected version? or prev selected version to save if user has auto save enabled.
-            end
-
             local rval, name = reaper.GetTrackName(current_track, "")
             GUI_Elements["TRACK"].text = name
-            GUI_Elements["DISP_TK_VERSIONS"].track_guid = reaper.GetTrackGUID(current_track)
+
+            local track =  reaper.GetParentTrack(current_track)
+            local current_track_guid = reaper.GetTrackGUID(current_track)
+            while track ~= nil do
+                local parent_track_guid = reaper.GetTrackGUID(track)
+                
+                if TK_VERSIONS[parent_track_guid] ~= nil then
+
+                    Print("Found Versions")
+                    --add Expandable Slot Classes to Display for parent track versions
+
+                end
+                track = reaper.GetParentTrack(track)
+            end
+
+            if TK_VERSIONS[current_track_guid] ~= nil then
+                Print("Found versions for current track")
+            end
+           
 
             -- Print("On track : " .. GUI_Elements["DISP_TK_VERSIONS"].track_guid .. "\n\n")
 
-            --local retval, load_state = reaper.GetProjExtState(0, "ausbaxter_Track Versions", GUI_Elements["DISP_TK_VERSIONS"].track_guid)
-            --Print("load state = " .. tostring(load_state))
-
-            --------------------------------------------------------------Load from Table, which you shouldn't need to do, everything should be able to take care of itself since you are just changing the read "key" for the main table
-
-            -- if retval == 1 then --Load table needs to iterate the new version,version table
-            --     local version_table = LoadTrackVersions(load_state)
-            --     -- Print(load_state)
-            --     -- Print("Loading State:")
-            --     -- Print(#version_table)
-            --     local selected_index = -1
-            --     for i, version in ipairs(version_table) do
-            --         --need to recall selected version in order to fill the current version chunk in the display class (its called on left click)
-            --         Print("adding to table " .. i)
-            --         if version.sel then selected_index = i end
-            --         GUI_Elements["DISP_TK_VERSIONS"]:AddSlot(version.name, false, version.sel, nil, "version")
-            --         --Print(version.chunk)
-            --         GUI_Elements["DISP_TK_VERSIONS"].elements[i].chunk = version.chunk
-            --         --Print("Load on track change " .. tostring(version.sub_tracks[1][1])) --version.sub_tracks is nil...
-            --         GUI_Elements["DISP_TK_VERSIONS"].elements[i].sub_tracks = version.sub_tracks
-            --         --set active last active version as current
-            --     end
-            --     if selected_index > 0 then GUI_Elements["DISP_TK_VERSIONS"].elements[selected_index].selected = true end
-            -- end
-
-            --check if ext state data exists already for selected track, don't do what follows
-
-            --can move this into the display class, within the add slot function, changing tracks should only check ext state for existing versions
-            -- local _,chunk = reaper.GetTrackStateChunk(current_track, "", false)
-            
-            -- GUI_Elements["DISP_TK_VERSIONS"].chunk = GetTrackChunkSeparated(chunk)
-
-            -- local folder_state = reaper.GetMediaTrackInfo_Value(current_track, "I_FOLDERDEPTH")
-            -- GUI_Elements["DISP_TK_VERSIONS"].subtracks = {}
-
-            -- if folder_state == 1 then --track is folder, store subtracks
-            --     local i = reaper.GetMediaTrackInfo_Value(current_track, "IP_TRACKNUMBER") - 1
-            --     local f_count = 0
-            --     while true do
-            --         local track = reaper.GetTrack(0, i)
-            --         local _,sub_chunk = reaper.GetTrackStateChunk(current_track, "", false)
-            --         local sub_fol_state = reaper.GetMediaTrackInfo_Value(track, "I_FOLDERDEPTH")
-            --         if sub_fol_state == 1 then f_count = f_count + 1
-            --         elseif sub_fol_state == -1 then f_count = f_count - 1 end
-            --         local _,n = reaper.GetTrackName(track, "")
-            --         reaper.ShowConsoleMsg(n.."\n")
-            --         if f_count <= 0 then break end
-            --         table.insert(GUI_Elements["DISP_TK_VERSIONS"].subtracks, {reaper.GetTrackGUID(track), GetTrackChunkSeparated(sub_chunk)})
-            --         i = i + 1
-            --     end
-            -- end
-            
-            --reaper.ShowConsoleMsg(#GUI_Elements["DISP_TK_VERSIONS"].subtracks .. "\n")
-            --reaper.ShowConsoleMsg(name .. " folder state = " .. folder_state .. "\n")
             
         end
         GUI_Elements["TRACK"].update = true
@@ -838,42 +986,75 @@ function AddVersion()
 
     local _,chunk = reaper.GetTrackStateChunk(current_track, "", false)
     
-    --update current track version state (stored in the display object)
-    GUI_Elements["DISP_TK_VERSIONS"].chunk = GetTrackChunkSeparated(chunk)
+    local track_guid = reaper.GetTrackGUID(current_track)
 
     local folder_state = reaper.GetMediaTrackInfo_Value(current_track, "I_FOLDERDEPTH")
-    GUI_Elements["DISP_TK_VERSIONS"].sub_tracks = {}
+    local sub_tracks = {}
     
-    --folder bugs will probably need to be addressed here (when tracks get deleted and what not)
+    --Currently does not store nested sub folders... need to refactor this
     if folder_state == 1 then --track is folder, store subtracks
-        --Print("folder")
-        local i = reaper.GetMediaTrackInfo_Value(current_track, "IP_TRACKNUMBER") - 1 --start at the 1st sub_track
-        local f_count = 0
-        local count = i
-        while true do
-            local track = reaper.GetTrack(0, i)
-            if track == nil then break end
-            local sub_fol_state = reaper.GetMediaTrackInfo_Value(track, "I_FOLDERDEPTH")
-            --Print(sub_fol_state)
-            if sub_fol_state == 1 then f_count = f_count + 1
-            elseif sub_fol_state <= -1 then f_count = f_count - 1 end
-            --reaper.ShowConsoleMsg(i.."\n")
-            if i - count > 0 then
-                local _,sub_chunk = reaper.GetTrackStateChunk(track, "", false)
-                local _,n = reaper.GetTrackName(track, "")
-                table.insert(GUI_Elements["DISP_TK_VERSIONS"].sub_tracks, {reaper.GetTrackGUID(track), GetTrackChunkSeparated(sub_chunk)})
+
+        function GetNestedFolderStates(i)
+            local sub_tracks = {}
+            while true do --Currently does not save nested folders
+                local track = reaper.GetTrack(0, i)
+                if track == nil then break end
+                local guid = reaper.GetTrackGUID(track)
+                local state = reaper.GetMediaTrackInfo_Value(track, "I_FOLDERDEPTH")
+                local _,chunk = reaper.GetTrackStateChunk(track, "", false)
+                local _, name = reaper.GetTrackName(track, "")
+                --Print("looking at track: " .. name)
+                if state == 1 then
+                    local return_state, idx, nested_tracks = GetNestedFolderStates(i+1)
+                    sub_tracks[guid] = nested_tracks
+                    i = idx
+                    if return_state < -1 then 
+                        return return_state + 1, i, sub_tracks
+                    end
+                elseif state < 0 then
+                    sub_tracks[guid] = GetTrackChunkSeparated(chunk)
+                    return state, i, sub_tracks
+                else
+                   sub_tracks[guid] = GetTrackChunkSeparated(chunk)
+                end
+                i = i + 1
             end
-            if f_count <= 0 then break end
-            i = i + 1
         end
+
+        local root = reaper.GetMediaTrackInfo_Value(current_track, "IP_TRACKNUMBER")
+        _,_,sub_tracks = GetNestedFolderStates(root)
+        --PrintTable(sub_tracks)
+
     end
 
-    GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Version", true, true, nil, "version")
-    local num_slots = #GUI_Elements["DISP_TK_VERSIONS"].elements
-    GUI_Elements["DISP_TK_VERSIONS"].elements[num_slots].chunk = GUI_Elements["DISP_TK_VERSIONS"].chunk
-    GUI_Elements["DISP_TK_VERSIONS"].elements[num_slots].sub_tracks = GUI_Elements["DISP_TK_VERSIONS"].sub_tracks
+    --GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Version", true, true, nil, "version") --add gui element
+    GUI_Elements["DISP_TK_VERSIONS"].elements[2]:AddSlot("Test", false, false, 4, Ex_Slot)
+    for i = 1, 5 do
+        GUI_Elements["DISP_TK_VERSIONS"].elements[2].slots[#GUI_Elements["DISP_TK_VERSIONS"].elements[2].slots]:AddSlot("Sub", false, false, 4)
+    end
+
+    if TK_VERSIONS[track_guid] == nil then TK_VERSIONS[track_guid] = {} end --make sure TK_VERSIONS track is a table
+
+    table.insert(TK_VERSIONS[track_guid], {name = "version", selected = true, chunk = chunk, sub_tracks = sub_tracks})
+
     reaper.MarkProjectDirty(0)
-    --Print(GUI_Elements["DISP_TK_VERSIONS"].elements[num_slots].chunk[2])
+
+end
+
+function PrintTable(t,n)
+    local c = n or 1
+    for i, k in pairs(t) do
+        if type(k) == "table" then
+            PrintTable(k,c+1)
+        end
+        local tab = ""
+        for k = 1, c do tab = tab .. "\t" end
+        local track = reaper.BR_GetMediaTrackByGUID(0, i)
+        if track ~= nil then
+            local _,name = reaper.GetTrackName(track,"")
+            Print(tab .. name)
+        end
+    end
 end
 
 function ShallowTableCopy(t_table) --Allows passing of 1D tables by value instead of reference
@@ -984,7 +1165,7 @@ function Main()
 
     for idx, elem in pairs(GUI_Elements) do
         
-        local over, element, sub_element = MouseIsOverlaping(elem, idx)
+        local over, element = MouseIsOverlapping(elem)
 
         if mouse_update and over then
 
@@ -992,20 +1173,16 @@ function Main()
 
             if left_mouse_down then 
                 last_clicked_element = element
-                last_clicked_sub_element = sub_element
             elseif right_mouse_down then 
                 last_clicked_element = element
-                last_clicked_sub_element = sub_element
 
             elseif left_mouse_up and element == last_clicked_element 
-            and sub_element == last_clicked_sub_element 
-            and elem.LeftClick ~= nil then
-                elem:LeftClick(sub_element)
+            and element.LeftClick ~= nil then
+                element:LeftClick()
 
             elseif right_mouse_up and element == last_clicked_element 
-            and sub_element == last_clicked_sub_element
-            and elem.RightClick ~= nil then
-                elem:RightClick(sub_element)
+            and element.RightClick ~= nil then
+                element:RightClick()
             end
         end
 
@@ -1073,11 +1250,15 @@ while true do
     Print("Deleting: " .. key)
     c = c + 1
 end
+reaper.ShowConsoleMsg("")
 
+TK_VERSIONS = {} --main version table
 
 gfx.init("Track Versions", global_w, global_h, 0, global_x, global_y)
 
 GUI_Elements["DISP_TK_VERSIONS"] = Slotted_Display:New(0, 0, global_w, global_h, 10, 85, -10, -180, nil, 25)
+GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Parent Tracks",false, false, 4, "parent", Ex_Slot)
+GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Current Track",false, false, 4, "current", Ex_Slot)
 
 GUI_Elements["DISP_RECALL"] = Slotted_Display:New(0, global_h, global_w, 0, 10, -115, -10, -10, nil, 25)
 GUI_Elements["DISP_RECALL"].editable = false
@@ -1085,10 +1266,10 @@ GUI_Elements["DISP_RECALL"].update_h = false
 GUI_Elements["DISP_RECALL"].allow_multi_select = true
 
 --will want to store last gui selection states when opening and closing version gui
-GUI_Elements["DISP_RECALL"]:AddSlot("Track", false, true, nil, "setting")
-GUI_Elements["DISP_RECALL"]:AddSlot("Envelopes", false, true, nil, "setting")
-GUI_Elements["DISP_RECALL"]:AddSlot("Track FX", false, true, nil, "setting")
-GUI_Elements["DISP_RECALL"]:AddSlot("Items", false, true, nil, "setting")
+-- GUI_Elements["DISP_RECALL"]:AddSlot("Track", false, true, nil, "setting")
+-- GUI_Elements["DISP_RECALL"]:AddSlot("Envelopes", false, true, nil, "setting")
+-- GUI_Elements["DISP_RECALL"]:AddSlot("Track FX", false, true, nil, "setting")
+-- GUI_Elements["DISP_RECALL"]:AddSlot("Items", false, true, nil, "setting")
 
 
 GUI_Elements["BUT_ADD_VERSION"] = Button:New(0, 0, global_w/2, 0, 10, 60, -2, 80, nil, "Add Version", AddVersion, reaper.ColorToNative(0, 0, 0))
