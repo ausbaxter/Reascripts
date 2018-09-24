@@ -247,16 +247,30 @@ end
 function Slotted_Display:CalculateElementHeight()
     --should be recursive to handle nested parent track versions.
     self.elements_height = 0
-    for i, slot in ipairs(self.elements) do
-        slot.y_offset = self.y + self.elements_height
-        self.elements_height = self.elements_height + slot.total_height
-        if slot.slots ~= nil then
-            for j, sub in ipairs(slot.slots) do
-                sub.y_offset = self.y + self.elements_height
-                self.elements_height = self.elements_height + slot.total_height
+    function CalculateHeight(slot)
+        container = slot.elements or slot.slots
+        for i, s in ipairs(container) do
+            Print(i)
+            if s.slots ~= nil then
+                self.elements_height = self.elements_height + s.total_height
+            else
+                s.y = self.y + self.elements_height
+                self.elements_height = self.elements_height + s.total_height
             end
         end
     end
+    CalculateHeight(self)
+    Print("Calculating element heights")
+    -- for i, slot in ipairs(self.elements) do
+    --     slot.y_offset = self.y + self.elements_height
+    --     self.elements_height = self.elements_height + slot.total_height
+    --     if slot.slots ~= nil then
+    --         for j, sub in ipairs(slot.slots) do
+    --             sub.y_offset = self.y + self.elements_height
+    --             self.elements_height = self.elements_height + slot.total_height
+    --         end
+    --     end
+    -- end
 
 end
 
@@ -306,8 +320,17 @@ function Slotted_Display:AddSlot(name, increment, sel, margin, tag, class)
     local margin = margin or 4
     name = name or ""
     s = class or Slot
-    local slot = s:New(0, self.y - self.y_offset, gfx.w, self.slot_height - margin,
-    self.x_offset + margin, self.y_offset + margin + (#self.elements * self.slot_height), -self.x_offset - margin, nil, tag)
+    local slot = s:New(
+        --[[x]]        0,
+        --[[y]]        self.y - self.y_offset,
+        --[[w]]        gfx.w,
+        --[[h]]        self.slot_height - margin,
+        --[[x_offset]] self.x_offset + margin,
+        --[[y_offset]] self.y_offset + margin + (#self.elements * self.slot_height),
+        --[[w_offset]] -self.x_offset - margin,
+        --[[h_offset]] nil,
+                       tag
+    )
     slot.update_h = false
     slot.editable = self.editable
     if self.allow_multi_select == false then
@@ -421,7 +444,7 @@ function Ex_Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
     return self
 end
 
-function Ex_Slot:LeftClick()
+function Ex_Slot:LeftClick(parent)
     if self.show then
         self.show = false
         self.total_height = self.slot_height
@@ -430,7 +453,38 @@ function Ex_Slot:LeftClick()
         self.total_height = (#self.slots + 1) * self.slot_height
     end
     Print("Expand or Contract ExSlot " .. self.text)
-    return self.total_height
+    parent:CalculateElementHeight()
+    --return self.total_height
+end
+
+function Ex_Slot:RightClick()
+    Print("right click")
+    gfx.x, gfx.y = gfx.mouse_x, gfx.mouse_y
+    local sel = gfx.showmenu("Add Slot|Add Folder")
+    if sel == 1 then
+        self:AddSlot("Test", false, false, 4)
+    elseif sel == 2 then
+        self:AddSlot("Test", false, false, 4, Ex_Slot)
+    end
+
+end
+
+function Ex_Slot:GetSlotHeight()
+    function GetSlotHeight(slot)
+        local total_height = self.slot_height
+        for i, s in ipairs(slot.slots) do
+            local h = 0
+            if s.slots ~= nil and s.show then
+                h = GetSlotHeight(s)
+            else
+                h = self.slot_height
+            end
+            total_height = total_height + h
+        end
+        return total_height
+    end
+
+    return GetSlotHeight(self)
 end
 
 function Ex_Slot:AddSlot(name, increment, sel, margin, class) --Needs to be able to add Ex_Slot to itself and update slot positions correctly.
@@ -444,24 +498,8 @@ function Ex_Slot:AddSlot(name, increment, sel, margin, class) --Needs to be able
     local x_offset = self.x_offset + (2*margin)
     local y_offset = 0
 
-    if self.show then 
-        --self.total_height = (#self.slots + 1) * self.slot_height
-        function GetSlotHeight(slot)
-            local total_height = self.slot_height
-            for i, s in ipairs(slot.slots) do
-                local h = 0
-                if s.slots ~= nil and s.show then
-                    h = GetSlotHeight(s)
-                else
-                    h = self.slot_height
-                end
-                total_height = total_height + h
-            end
-            return total_height
-        end
-
-        self.total_height = GetSlotHeight(self)
-
+    if self.show then
+        self.total_height = self:GetSlotHeight()
     end
 
     Print(name .. " og total height: " .. self.total_height .. " > og slot height: " .. self.slot_height)
@@ -573,6 +611,7 @@ function Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
     self.last_click = 0
     self.tag = tag or ""
     self.update_h = false
+    self.total_height = self.h
 
     self.chunk = {}
     self.sub_tracks = {}
@@ -795,7 +834,8 @@ function MouseIsOverlapping(element)
 
     if Overlap(element) then
         if element.elements ~= nil then
-            return GetOverlappedElement(element.elements)
+            retval, elem = GetOverlappedElement(element.elements)
+            return retval, elem, element
         else
             return true, element
         end
@@ -1165,7 +1205,7 @@ function Main()
 
     for idx, elem in pairs(GUI_Elements) do
         
-        local over, element = MouseIsOverlapping(elem)
+        local over, element, parent = MouseIsOverlapping(elem)
 
         if mouse_update and over then
 
@@ -1178,11 +1218,11 @@ function Main()
 
             elseif left_mouse_up and element == last_clicked_element 
             and element.LeftClick ~= nil then
-                element:LeftClick()
+                element:LeftClick(parent)
 
             elseif right_mouse_up and element == last_clicked_element 
             and element.RightClick ~= nil then
-                element:RightClick()
+                element:RightClick(parent)
             end
         end
 
