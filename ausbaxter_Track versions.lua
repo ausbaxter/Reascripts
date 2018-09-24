@@ -130,13 +130,14 @@ end
 Slotted_Display = {}
 Slotted_Display.__index = Slotted_Display
 
-function Slotted_Display:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer, slot_height)
+function Slotted_Display:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, slot_height, margin, buffer)
     local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, buffer), Slotted_Display)
     setmetatable(Slotted_Display, {__index = ScalingObject})
 
-    self.slot_height = slot_height
+    self.slot_height = slot_height or 25
+    self.margin = margin or 4
 
-    self.selected_index = -1
+    self.selected_index = -1 --wont need
 
     self.scroll_offset = 0
     self.elements_height = 0
@@ -161,86 +162,38 @@ function Slotted_Display:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset,
     return self
 end
 
-function Slotted_Display:LeftClick(index)
-    if alt then
-        if index == nil then index = -1 end
-        self:DelSlot(index)
-        return
+function Slotted_Display:LeftClick(element)
+    -- if alt then
+    --     if index == nil then index = -1 end
+    --     self:DelSlot(index)
+    --     return
+    -- end
+
+    if element.LeftClick ~= nil then
+        Print("Slotted Display Left Click")
+        element:LeftClick()
+        if element.isfolder then --need to recalculate Display Heights
+            --Then need to apply the heights to the remaining slots, adjusting the GUI Display (xywh)
+        end
     end
 
-    if self.elements[index] ~= nil then
-        
-        self.elements[index]:LeftClick(self.allow_multi_select)
+    self.update = true
 
-        --self:CalculateElementHeight()
+end
 
-        Print(self.elements_height)
-
-        -- --theres a better way to use tags, like on the display itself instead of every element
-        -- if self.elements[index].tag == "version" and self.elements[index].selected == false then
-    
-        --     --Print(tostring(self.track_guid))
-
-        --     if self.track_guid == nil then return end
-
-        --     --Update The Previous Version Here-----------------------------------------------------------------
-
-        --     --Print("load version chunks")
-
-        --     local version_chunk = self.elements[index].chunk
-
-        --     version_chunk = UpdateChunkTable(version_chunk, self.chunk) --check what to recall
-    
-        --     if version_chunk == -1 then Print("Must have 1 setting to recall. will implement a check during multiselection on display that prevents this altogether") return end
-        --     --Print(version_chunk)
-
-        --     local version_chunk_str = ConvertChunkToString(version_chunk) .. ">"
-
-        --     reaper.PreventUIRefresh(1)
-
-        --     reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, self.track_guid), version_chunk_str, false)
-        --     --reflect active settings
-        --     --Print("Recall Version: \n\n\n\n" .. version_chunk_str .. "\n")
-        --     self.chunk = version_chunk
-
-        --     if #self.elements[index].sub_tracks > 0 then
-        --         --Print("load chunks into subtracks")
-        --         --[TODO]
-                
-        --         --UPON LOADING FROM EXT STATE SUBTRACKS IS NIL HERE NOT SURE WHY.
-                
-        --         for i, tk_tbl in ipairs(self.elements[index].sub_tracks) do
-        --             --Print("iterating through subtracks " .. i .. "\n: " .. tostring(self.sub_tracks[i]))
-        --             local new_chunk_tbl = UpdateChunkTable(tk_tbl[2], self.sub_tracks[2])
-        --             local str = ConvertChunkToString(new_chunk_tbl)
-        --             -- Print(str..">")
-        --             reaper.SetTrackStateChunk(reaper.BR_GetMediaTrackByGUID(0, tk_tbl[1]), str .. ">", false)
-        --         end
-
-        --         self.sub_tracks = self.elements[index].sub_tracks
-
-        --         --Print("out of subtrack iteration")
-        --         --iterate through sub_tracks
-        --     end
-
-        --     reaper.UpdateArrange()
-        --     reaper.TrackList_AdjustWindows(false)
-        --     reaper.PreventUIRefresh(-1)
-        -- end
-
-        -- if index ~= self.selected_index and self.allow_multi_select == false then
-        --     for i, macro in pairs(self.elements) do macro.selected = false end
-        -- end
-
-        -- if self.allow_multi_select and self.elements[index].selected == true then 
-        --     self.elements[index].selected = false
-        -- else
-        --     self.elements[index].selected = true
-        -- end
-
-        self.selected_index = index
-        self.update = true
+function Slotted_Display:RightClick(element)
+    -- if alt then
+    --     if index == nil then index = -1 end
+    --     self:DelSlot(index)
+    --     return
+    -- end
+    Print(element.text)
+    if element.RightClick ~= nil then
+        Print("Slotted Display Right Click")
+        element:RightClick()
     end
+
+    self.update = true
 
 end
 
@@ -316,11 +269,10 @@ function Slotted_Display:UpdateDimensions()
 
 end
 
-function Slotted_Display:AddSlot(name, increment, sel, margin, tag, class)
+function Slotted_Display:AddSlot(name, is_folder,  tag)
     local margin = margin or 4
     name = name or ""
-    s = class or Slot
-    local slot = s:New(
+    local slot = Slot:New(
         --[[x]]        0,
         --[[y]]        self.y - self.y_offset,
         --[[w]]        gfx.w,
@@ -329,6 +281,7 @@ function Slotted_Display:AddSlot(name, increment, sel, margin, tag, class)
         --[[y_offset]] self.y_offset + margin + (#self.elements * self.slot_height),
         --[[w_offset]] -self.x_offset - margin,
         --[[h_offset]] nil,
+                       is_folder,
                        tag
     )
     slot.update_h = false
@@ -427,24 +380,25 @@ end
 
 ---------------------------------Expandable Slot------------------------------------
 
-Ex_Slot = {}
-Ex_Slot.__index = Ex_Slot
+Slot = {}
+Slot.__index = Slot
 
-function Ex_Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
-    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset), Ex_Slot)
-    setmetatable(Ex_Slot, {__index = ScalingObject})
+function Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, is_folder,  tag)
+    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset), Slot)
+    setmetatable(Slot, {__index = ScalingObject})
     self.orig_y = self.y_offset
     self.total_height = h
     self.text = ""
     self.tag = tag or ""
     self.slots = {}
     self.show = true
+    self.is_folder = is_folder
     self.slot_height = 25
 
     return self
 end
 
-function Ex_Slot:LeftClick(parent)
+function Slot:LeftClick()
     if self.show then
         self.show = false
         self.total_height = self.slot_height
@@ -453,11 +407,10 @@ function Ex_Slot:LeftClick(parent)
         self.total_height = (#self.slots + 1) * self.slot_height
     end
     Print("Expand or Contract ExSlot " .. self.text)
-    parent:CalculateElementHeight()
-    --return self.total_height
+    return self.total_height
 end
 
-function Ex_Slot:RightClick()
+function Slot:RightClick()
     Print("right click")
     gfx.x, gfx.y = gfx.mouse_x, gfx.mouse_y
     local sel = gfx.showmenu("Add Slot|Add Folder")
@@ -469,7 +422,7 @@ function Ex_Slot:RightClick()
 
 end
 
-function Ex_Slot:GetSlotHeight()
+function Slot:GetSlotHeight()
     function GetSlotHeight(slot)
         local total_height = self.slot_height
         for i, s in ipairs(slot.slots) do
@@ -487,7 +440,7 @@ function Ex_Slot:GetSlotHeight()
     return GetSlotHeight(self)
 end
 
-function Ex_Slot:AddSlot(name, increment, sel, margin, class) --Needs to be able to add Ex_Slot to itself and update slot positions correctly.
+function Slot:AddSlot(name, increment, sel, margin, class) --Needs to be able to add Ex_Slot to itself and update slot positions correctly.
     local margin = margin or 4
     class = class or Slot
     name = name or ""
@@ -552,7 +505,7 @@ function Ex_Slot:AddSlot(name, increment, sel, margin, class) --Needs to be able
     --save to project ex state??
 end
 
-function Ex_Slot:UpdateDimensions()
+function Slot:UpdateDimensions()
     ScalingObject.UpdateDimensions(self)
     for i, elem in pairs(self.slots) do
         elem:UpdateDimensions()
@@ -560,7 +513,7 @@ function Ex_Slot:UpdateDimensions()
     end
 end
 
-function Ex_Slot:Draw()
+function Slot:Draw()
     local text_r, text_g, text_b
     local slot_r, slot_g, slot_b
     text_r = 170 text_g = 170 text_b = 170
@@ -570,16 +523,18 @@ function Ex_Slot:Draw()
     gfx.rect(self.x, self.y, self.w, self.h, true)
 
     SetColor(text_r,text_g,text_b)
-    gfx.rect(self.x, self.y, self.w, self.h, false)
+    --gfx.rect(self.x, self.y, self.w, self.h, false)
 
     local r_edge = self.x+self.w
     local b_edge = self.y+(self.h/2)
     
-    if self.show then
-        gfx.triangle(r_edge-15, b_edge-2, r_edge-10, b_edge+3, r_edge-5, b_edge-2)
-        for i, slot in ipairs(self.slots) do slot:Draw() end
-    else
-        gfx.triangle(r_edge-15, b_edge+3, r_edge-10, b_edge-2, r_edge-5, b_edge+3)
+    if self.is_folder then
+        if self.show then
+            gfx.triangle(r_edge-15, b_edge-3, r_edge-10, b_edge+2, r_edge-5, b_edge-3)
+            for i, slot in ipairs(self.slots) do slot:Draw() end
+        else
+            gfx.triangle(r_edge-15, b_edge+2, r_edge-10, b_edge-3, r_edge-5, b_edge+2)
+        end
     end
 
     gfx.setfont(1, "Arial", sm_font_size)
@@ -598,75 +553,75 @@ function Ex_Slot:Draw()
 end
 
 ---------------------------------------Slot-----------------------------------------
-Slot = {}
-Slot.__index = Slot
+-- Slot = {}
+-- Slot.__index = Slot
 
-function Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
-    local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset), Slot)
-    setmetatable(Slot, {__index = ScalingObject})
-    self.orig_y = self.y_offset
-    self.text = ""
-    self.selected = false
-    self.editable = true
-    self.last_click = 0
-    self.tag = tag or ""
-    self.update_h = false
-    self.total_height = self.h
+-- function Slot:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset, tag)
+--     local self = setmetatable(ScalingObject:New(x, y, w, h, x_offset, y_offset, w_offset, h_offset), Slot)
+--     setmetatable(Slot, {__index = ScalingObject})
+--     self.orig_y = self.y_offset
+--     self.text = ""
+--     self.selected = false
+--     self.editable = true
+--     self.last_click = 0
+--     self.tag = tag or ""
+--     self.update_h = false
+--     self.total_height = self.h
 
-    self.chunk = {}
-    self.sub_tracks = {}
+--     self.chunk = {}
+--     self.sub_tracks = {}
 
-    return self
-end
+--     return self
+-- end
 
---click function that stores current time and compares to last click in order to implement double click feature.
+-- --click function that stores current time and compares to last click in order to implement double click feature.
 
-function Slot:LeftClick(allow_multi_selection)
+-- function Slot:LeftClick(allow_multi_selection)
 
-    --will have to do renaming in right click menu most likely
-    if self.last_click ~= nil and reaper.time_precise() - self.last_click < 0.4 then 
-        self:DblClick() 
-        self.last_click = 0 
-    end
-    self.last_click = reaper.time_precise()
-end
+--     --will have to do renaming in right click menu most likely
+--     if self.last_click ~= nil and reaper.time_precise() - self.last_click < 0.4 then 
+--         self:DblClick() 
+--         self.last_click = 0 
+--     end
+--     self.last_click = reaper.time_precise()
+-- end
 
-function Slot:DblClick()
-    if self.editable == false then return end
-    local rval, input = reaper.GetUserInputs("Rename " .. self.text, 1, "New Name:", self.text)
-    if rval then
-        self.text = input
-    end
-end
+-- function Slot:DblClick()
+--     if self.editable == false then return end
+--     local rval, input = reaper.GetUserInputs("Rename " .. self.text, 1, "New Name:", self.text)
+--     if rval then
+--         self.text = input
+--     end
+-- end
 
-function Slot:Draw()
-    local text_r, text_g, text_b
-    local slot_r, slot_g, slot_b
-    if self.selected then
-        slot_r = 170 slot_g = 170 slot_b = 170
-        text_r = 36 text_g = 43 text_b = 43
-    else
-        text_r = 170 text_g = 170 text_b = 170
-        slot_r = 36 slot_g = 43 slot_b = 43
-    end
-    SetColor(slot_r,slot_g,slot_b)
-    gfx.rect(self.x, self.y, self.w, self.h, true)
+-- function Slot:Draw()
+--     local text_r, text_g, text_b
+--     local slot_r, slot_g, slot_b
+--     if self.selected then
+--         slot_r = 170 slot_g = 170 slot_b = 170
+--         text_r = 36 text_g = 43 text_b = 43
+--     else
+--         text_r = 170 text_g = 170 text_b = 170
+--         slot_r = 36 slot_g = 43 slot_b = 43
+--     end
+--     SetColor(slot_r,slot_g,slot_b)
+--     gfx.rect(self.x, self.y, self.w, self.h, true)
 
-    gfx.setfont(1, "Arial", sm_font_size)
-    local text_width, text_height = gfx.measurestr(self.text)
+--     gfx.setfont(1, "Arial", sm_font_size)
+--     local text_width, text_height = gfx.measurestr(self.text)
 
-    if text_width >= self.w then
-        gfx.x = self.x
-    else
-        gfx.x = self.x + self.w / 2 - math.floor(text_width/2)
-    end
-    gfx.y = self.y + self.h / 2 - math.floor(text_height/2)
-    SetColor(text_r,text_g,text_b)
-    gfx.drawstr(self.text)
-    gfx.x = 0 gfx.y = 0
-end
+--     if text_width >= self.w then
+--         gfx.x = self.x
+--     else
+--         gfx.x = self.x + self.w / 2 - math.floor(text_width/2)
+--     end
+--     gfx.y = self.y + self.h / 2 - math.floor(text_height/2)
+--     SetColor(text_r,text_g,text_b)
+--     gfx.drawstr(self.text)
+--     gfx.x = 0 gfx.y = 0
+-- end
 
----------------------------------------Label--------------------------------------
+-- ---------------------------------------Label--------------------------------------
 
 Label = {}
 Label.__index = Label
@@ -825,8 +780,8 @@ function MouseIsOverlapping(element)
             if Overlap(sub_elem) then return true, sub_elem end
             if sub_elem.slots ~= nil and sub_elem.show then 
                 --Print("in slot table")
-                retval, elem = GetOverlappedElement(sub_elem.slots)
-                if retval then return retval, elem end
+                retval, sub = GetOverlappedElement(sub_elem.slots)
+                if retval then return retval, sub end
             end
         end
         return false, nil
@@ -834,10 +789,10 @@ function MouseIsOverlapping(element)
 
     if Overlap(element) then
         if element.elements ~= nil then
-            retval, elem = GetOverlappedElement(element.elements)
-            return retval, elem, element
+            retval, sub = GetOverlappedElement(element.elements)
+            return retval, sub, element
         else
-            return true, element
+            return true, nil ,element
         end
     else
         return false, nil
@@ -1217,12 +1172,12 @@ function Main()
                 last_clicked_element = element
 
             elseif left_mouse_up and element == last_clicked_element 
-            and element.LeftClick ~= nil then
-                element:LeftClick(parent)
+            and parent.LeftClick ~= nil then
+                parent:LeftClick(element)
 
             elseif right_mouse_up and element == last_clicked_element 
-            and element.RightClick ~= nil then
-                element:RightClick(parent)
+            and parent.RightClick ~= nil then
+                parent:RightClick(element)
             end
         end
 
@@ -1296,11 +1251,11 @@ TK_VERSIONS = {} --main version table
 
 gfx.init("Track Versions", global_w, global_h, 0, global_x, global_y)
 
-GUI_Elements["DISP_TK_VERSIONS"] = Slotted_Display:New(0, 0, global_w, global_h, 10, 85, -10, -180, nil, 25)
-GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Parent Tracks",false, false, 4, "parent", Ex_Slot)
-GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Current Track",false, false, 4, "current", Ex_Slot)
+GUI_Elements["DISP_TK_VERSIONS"] = Slotted_Display:New(0, 0, global_w, global_h, 10, 85, -10, -180, 25, 4)
+GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Parent Tracks", false, "parent")
+GUI_Elements["DISP_TK_VERSIONS"]:AddSlot("Current Track", true, "current")
 
-GUI_Elements["DISP_RECALL"] = Slotted_Display:New(0, global_h, global_w, 0, 10, -115, -10, -10, nil, 25)
+GUI_Elements["DISP_RECALL"] = Slotted_Display:New(0, global_h, global_w, 0, 10, -115, -10, -10, 25, 4)
 GUI_Elements["DISP_RECALL"].editable = false
 GUI_Elements["DISP_RECALL"].update_h = false
 GUI_Elements["DISP_RECALL"].allow_multi_select = true
