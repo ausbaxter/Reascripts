@@ -44,7 +44,7 @@ function RightTrim(fade_length)
             if i_pos < cursor and i_end > cursor then
                 reaper.SetMediaItemInfo_Value(item, "B_UISEL", 1)
                 reaper.ApplyNudge(0, 1, 3, 0, cursor + fade_length, false, 0)
-                reaper.SetMediaItemInfo_Value(item, "D_FADEOUTLEN", fade_length) end
+                reaper.SetMediaItemInfo_Value(item, "D_FADEOUTLEN", fade_length)
                 reaper.SetMediaItemInfo_Value(item, "B_UISEL", 0)
             end
         end
@@ -61,7 +61,7 @@ function RightTrim(fade_length)
 end
 
 function main()
-    LeftTrim(fade_length/1000)
+    RightTrim(fade_length/1000)
 end
 
 main()
