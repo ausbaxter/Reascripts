@@ -17,7 +17,7 @@ end
 
 -------------------------USER VARIABLE (ms)----------------------------------------------
 --Sets the nudge and fade length value when executed
-local fade_length = 100
+local fade_length = 280
 ------------------------------------------------------------------------------------
 
 --library requirement

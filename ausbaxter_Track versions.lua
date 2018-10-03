@@ -171,9 +171,12 @@ function Slotted_Display:LeftClick(element)
 
     if element.LeftClick ~= nil then
         Print("Slotted Display Left Click")
-        element:LeftClick()
-        if element.isfolder then --need to recalculate Display Heights
+        local h = element:LeftClick() --adjust total_height
+        Print("Left Click Height is now: " .. h)
+        if element.is_folder then --need to recalculate Display Heights
             --Then need to apply the heights to the remaining slots, adjusting the GUI Display (xywh)
+            l--loop through elements and redraw based on new slot heights, GetSlotHeight() is already called in element:LeftClick() so heights should be updated.
+            Print("Element is folder!")
         end
     end
 
@@ -404,7 +407,8 @@ function Slot:LeftClick()
         self.total_height = self.slot_height
     else
         self.show = true
-        self.total_height = (#self.slots + 1) * self.slot_height
+        --self.total_height = (#self.slots + 1) * self.slot_height
+        self.total_height = self:GetSlotHeight()
     end
     Print("Expand or Contract ExSlot " .. self.text)
     return self.total_height
@@ -424,13 +428,13 @@ end
 
 function Slot:GetSlotHeight()
     function GetSlotHeight(slot)
-        local total_height = self.slot_height
+        local total_height = slot.slot_height
         for i, s in ipairs(slot.slots) do
             local h = 0
             if s.slots ~= nil and s.show then
                 h = GetSlotHeight(s)
             else
-                h = self.slot_height
+                h = slot.slot_height
             end
             total_height = total_height + h
         end
