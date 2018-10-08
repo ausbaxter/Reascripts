@@ -2,11 +2,11 @@
 local info = debug.getinfo(1,'S');
 script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
 
-local function req(fole)
+local function req(file)
     if missing_lib then return function () end end
-    local ret, err = loadfile(script_path .. fole)
+    local ret, err = loadfile(script_path .. file)
     if not ret then
-        reaper.ShowMessageBox("Couldn't load "..fole.."\n\nError: "..tostring(err), "Library error", 0)
+        reaper.ShowMessageBox("Couldn't load "..file.."\n\nError: "..tostring(err), "Library error", 0)
         missing_lib = true    
         return function () end
     else 
@@ -15,10 +15,15 @@ local function req(fole)
 end
 ------------------------------------------------------------------------------------
 
---library requirement
-req("ausbaxter_Helper_functions.lua")()
+-------------------------USER VARIABLE (ms)----------------------------------------------
+--Sets the nudge and fade length value when executed
+local fade_length = 220
+------------------------------------------------------------------------------------
 
-function main()
+--library requirement
+req("ausbaxter_Helper_functions.lua")()--remove at some point
+
+function LeftTrim(fade_length)
 
     if reaper.CountSelectedMediaItems(0) > 0 then
 
@@ -38,10 +43,8 @@ function main()
             local i_end = i_pos + reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
             if i_pos < cursor and i_end > cursor then
                 reaper.SetMediaItemInfo_Value(item, "B_UISEL", 1)
-                local fo = reaper.GetMediaItemInfo_Value(item, "D_FADEOUTLEN")
-                if cursor > i_end - fo then reaper.SetMediaItemInfo_Value(item, "D_FADEOUTLEN", fo - (i_end - cursor)) 
-                else reaper.SetMediaItemInfo_Value(item, "D_FADEOUTLEN", 0) end
-                reaper.ApplyNudge(0, 1, 3, 0, cursor, false, 0)
+                reaper.ApplyNudge(0, 1, 1, 0, cursor-fade_length, false, 0)
+                reaper.SetMediaItemInfo_Value(item, "D_FADEINLEN", fade_length)
                 reaper.SetMediaItemInfo_Value(item, "B_UISEL", 0)
             end
         end
@@ -50,11 +53,15 @@ function main()
 
         for i, item in ipairs(sel_items) do reaper.SetMediaItemInfo_Value(item, "B_UISEL", 1) end
 
-        reaper.Undo_EndBlock("Trim right edge", -1)
+        reaper.Undo_EndBlock("Trim left edge", -1)
         reaper.UpdateArrange()
 
     end
 
+end
+
+function main()
+    LeftTrim(fade_length/1000)
 end
 
 main()
