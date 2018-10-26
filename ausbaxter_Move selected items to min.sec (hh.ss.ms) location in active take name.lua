@@ -1,5 +1,5 @@
 selectedItem = {}
-
+reaper.PreventUIRefresh(1)
 if reaper.CountSelectedMediaItems(0) > 0 then
   for i = 0, reaper.CountMediaItems(0)-1 do -- loop through all selected items
     selectedItem[i] = reaper.GetSelectedMediaItem(0, i) -- save item ID to table, so that they are accesible in a fixed order, when items are re-positioned
