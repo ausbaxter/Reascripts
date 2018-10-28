@@ -55,7 +55,7 @@ function loop()
 
         rec_buffer_clock:Start()
         
-        display_text = "Read Next Line"
+        display_text = "Next Line"
         display_color = reaper.ColorToNative(0, 255, 0)
 
     elseif cue_on == "redo" then 
