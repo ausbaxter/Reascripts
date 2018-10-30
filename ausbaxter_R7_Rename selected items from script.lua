@@ -115,7 +115,8 @@ function main()
 
                 local item = track[j-1]
                 local take = reaper.GetTake(item, 0)
-                reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", filename, true)
+                stripped_filename = string.match(filename, "[_%w]+")
+                reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", string.upper(stripped_filename), true)
             end
         end
     end

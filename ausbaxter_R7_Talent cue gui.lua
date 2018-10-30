@@ -59,6 +59,13 @@ function GetLine(cur_pos)
             return r_line
         end
     end
+
+    local r_val, question = reaper.GetProjExtState(0, "TalentCue", "FFQuestion")
+    reaper.ShowConsoleMsg(tostring(question).."\n")
+    if r_val then
+        return question
+    end
+
     return ""
 end
 
