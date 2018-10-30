@@ -81,14 +81,17 @@ function main()
 
     reaper.Undo_BeginBlock()
 
+    local t_csv = {}
+
     local r, file = reaper.GetProjExtState(0, "R7-Script_Name_Source", "path")
+
     if r ~= 1 then
-        local retval, file = reaper.GetUserFileNameForRead("C:\\Users\\ausba\\Desktop", "Browsing for R7-Script", ".csv")
+        retval, file = reaper.GetUserFileNameForRead("C:\\Users\\ausba\\Desktop", "Browsing for R7-Script", ".csv")
         if not retval then return end
         if string.find(file, ".csv") == nil then reaper.ReaScriptError("R7 Script import failed. Please import a csv file.") end
+        reaper.SetProjExtState(0, "R7-Script_Name_Source", "path", file)
     end
 
-    local t_csv = {}
     for line in io.lines(file) do
         row = ParseCSVLine(line, ",")
         table.insert(t_csv, row)
@@ -117,8 +120,6 @@ function main()
             end
         end
     end
-
-    reaper.SetProjExtState(0, "R7-Script_Name_Source", "path", file)
 
     reaper.Undo_EndBlock("Rename items from R7 script", -1)
 
