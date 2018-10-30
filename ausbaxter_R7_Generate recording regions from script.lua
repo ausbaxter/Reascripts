@@ -73,7 +73,7 @@ function main()
         end
 	end
 	
-	reaper.Undo_EndBlock("Generate recording regions from R7 script", integer extraflags)
+	reaper.Undo_EndBlock("Generate recording regions from R7 script", -1)
 end
 
 main()
