@@ -42,7 +42,11 @@ function ParseCSVLine (line,sep)
 end
 
 function main()
-    local retval, file = reaper.GetUserFileNameForRead("C:\\Users\\ausba\\Desktop", "Browsing for R7-Script", ".csv")
+
+	reaper.Undo_BeginBlock()
+
+	local retval, file = reaper.GetUserFileNameForRead("C:\\Users\\ausba\\Desktop", "Browsing for R7-Script", ".csv")
+	if not retval then return end
     if string.find(file, ".csv") == nil then reaper.ReaScriptError("R7 Script import failed. Please import a csv file.") end
 
     local t_csv = {}
@@ -67,7 +71,9 @@ function main()
 			reaper.AddProjectMarker(0, true, c_region_start, c_region_start + region_length, row[dialog_column], -1)
 			c_region_start = c_region_start + region_length
         end
-    end
+	end
+	
+	reaper.Undo_EndBlock("Generate recording regions from R7 script", integer extraflags)
 end
 
 main()

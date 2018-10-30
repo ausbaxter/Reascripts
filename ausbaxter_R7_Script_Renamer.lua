@@ -78,8 +78,15 @@ function GetSelectedMediaItemsByTracks()
 end
 
 function main()
-    local retval, file = reaper.GetUserFileNameForRead("C:\\Users\\ausba\\Desktop", "Browsing for R7-Script", ".csv")
-    if string.find(file, ".csv") == nil then reaper.ReaScriptError("R7 Script import failed. Please import a csv file.") end
+
+    reaper.Undo_BeginBlock()
+
+    local r, file = reaper.GetProjExtState(0, "R7-Script_Name_Source", "path")
+    if r ~= 1 then
+        local retval, file = reaper.GetUserFileNameForRead("C:\\Users\\ausba\\Desktop", "Browsing for R7-Script", ".csv")
+        if not retval then return end
+        if string.find(file, ".csv") == nil then reaper.ReaScriptError("R7 Script import failed. Please import a csv file.") end
+    end
 
     local t_csv = {}
     for line in io.lines(file) do
@@ -104,12 +111,16 @@ function main()
                     filename = filename .. row[idx] .. delimiter
                 end
 
-                local item = track[j]
+                local item = track[j-1]
                 local take = reaper.GetTake(item, 0)
                 reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", filename, true)
             end
         end
     end
+
+    reaper.SetProjExtState(0, "R7-Script_Name_Source", "path", file)
+
+    reaper.Undo_EndBlock("Rename items from R7 script", -1)
 
 end
 
