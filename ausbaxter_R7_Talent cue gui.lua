@@ -63,7 +63,7 @@ function GetLine(cur_pos)
 end
 
 function MeasureString(str, margin)
-    local str_measure = -margin
+    local str_measure = margin
     local word_location = 0
     local wrap_string = ""
     local sep_table = {}
@@ -77,11 +77,11 @@ function MeasureString(str, margin)
             word_location = i
         end
 
-        if str_measure >= gfx.w - (margin * 2) then
+        if str_measure >= gfx.w - margin then
             table.insert(sep_table, word_location)
             wrap_count = wrap_count + 1
 
-            str_measure = -1 * ((gfx.measurechar(string.byte(c)) +  margin) * wrap_count)
+            str_measure = gfx.measurechar(string.byte(" ")) * wrap_count
 
             if wrap_count > 0 then
                 for k = word_location, i do
