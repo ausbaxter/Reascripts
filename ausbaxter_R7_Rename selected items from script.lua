@@ -1,4 +1,4 @@
-NamingConvention = {"PHRASE DESCRIPTION", "RECORDING_FILENAME"}
+NamingConvention = {"LINE_ID"}
 --Enter the [COLUMN NAME]s in the desired order for naming. 
 
 function ParseCSVLine (line,sep) 
@@ -45,7 +45,8 @@ function GetNamingMap(csv)
     local lookuptable = {}
     for j, name in ipairs(NamingConvention) do
         for k, column in ipairs(csv[1]) do
-            if column == name then
+            strip_column = string.match(column, "[_%w]+")
+            if strip_column == name then
                 table.insert(lookuptable, k)
             end
         end
@@ -63,7 +64,6 @@ function GetSelectedMediaItemsByTracks()
         local track = reaper.GetMediaItem_Track(item)
         if track == prev_track or init then
             table.insert(items, item)
-            reaper.ShowConsoleMsg("Inserting Item into Items Table\n")
         else
             table.insert(tracks, items)
             items = {}
@@ -73,7 +73,6 @@ function GetSelectedMediaItemsByTracks()
         init = false
     end
     table.insert(tracks, items)
-    reaper.ShowConsoleMsg(#tracks)
     return tracks
 end
 
@@ -83,19 +82,20 @@ function main()
 
     local t_csv = {}
 
-    local r, file = reaper.GetProjExtState(0, "R7-Script_Name_Source", "path")
+    --local r, file = reaper.GetProjExtState(0, "R7-Script_Name_Source", "path")
 
-    if r ~= 1 then
-        retval, file = reaper.GetUserFileNameForRead("C:\\Users\\ausba\\Desktop", "Browsing for R7-Script", ".csv")
+    --if r ~= 1 then
+        retval, file = reaper.GetUserFileNameForRead("", "Browsing for R7-Script", ".csv")
         if not retval then return end
         if string.find(file, ".csv") == nil then reaper.ReaScriptError("R7 Script import failed. Please import a csv file.") end
         reaper.SetProjExtState(0, "R7-Script_Name_Source", "path", file)
-    end
+    --end
 
     for line in io.lines(file) do
         row = ParseCSVLine(line, ",")
         table.insert(t_csv, row)
     end
+
 
     local lookuptable = GetNamingMap(t_csv)
     local tracks = GetSelectedMediaItemsByTracks()

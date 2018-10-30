@@ -1,4 +1,4 @@
-dialog_column_name = "PHRASE DESCRIPTION"
+dialog_column_name = "LINE"
 region_length = 20
 
 function ParseCSVLine (line,sep) 
