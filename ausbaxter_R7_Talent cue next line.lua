@@ -30,5 +30,7 @@ if play_state == 5 then --actively recording
 	reaper.SetProjExtState(0, "TalentCue", "ListUpdate", "next")
     --reaper.Main_OnCommand(edit_marker, 0)
     reaper.Undo_EndBlock("Cue Next Line", -1)
-
+	
+else
+	reaper.SetProjExtState(0, "TalentCue", "ListUpdate", "next")
 end

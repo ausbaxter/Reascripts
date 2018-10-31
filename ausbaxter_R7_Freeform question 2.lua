@@ -1,4 +1,4 @@
-question = "What's your favorite hobby? Is there a hobby you've always wanted to try?"
+question = "Have you seen any good movies or read any good books recently? Tell me about one!"
 
 function main()
 

@@ -78,7 +78,10 @@ end
 
 function GetLineFromExtState()
     local r_val, line = reaper.GetProjExtState(0, "TalentCue", "LineDisplay")
-    if r_val then
+    local override, o_line = reaper.GetProjExtState(0, "TalentCue", "FreeLineDisplay")
+    if o_line ~= "" then
+        return o_line
+    elseif r_val then
         return line
     end
     return ""
@@ -303,7 +306,7 @@ end
 
 function main()
 
-    reaper.SetProjExtState(0, "TalentCue", "", "") --reset ext state
+    --reaper.SetProjExtState(0, "TalentCue", "", "") --reset ext state
 
     -- width = 1600
     -- height = 2000
