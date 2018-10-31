@@ -11,5 +11,5 @@ if play_state == 5 then --actively recording
     reaper.SetProjExtState(0, "TalentCue", "Cue", "redo")
     reaper.Undo_EndBlock("Cue Redo Line", -1)
 else
-    reaper.SetProjExtState(0, "TalentCue", "ListUpdate", "prev")
+    reaper.SetProjExtState(0, "TalentLineDisplay", "ListUpdate", "prev")
 end

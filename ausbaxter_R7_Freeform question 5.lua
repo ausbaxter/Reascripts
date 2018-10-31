@@ -2,7 +2,7 @@ question = "Test Question Test Question Test Question Test Question Test Questio
 
 function main()
 
-    reaper.SetProjExtState(0, "TalentCue", "FreeLineDisplay", question)
+    reaper.SetProjExtState(0, "TalentLineDisplay", "FreeLineDisplay", question)
 
 end
 

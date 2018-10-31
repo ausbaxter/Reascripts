@@ -67,7 +67,7 @@ function GetLineFromRegion(cur_pos)
         end
     end
 
-    local r_val, question = reaper.GetProjExtState(0, "TalentCue", "FFQuestion")
+    local r_val, question = reaper.GetProjExtState(0, "TalentLineDisplay", "FFQuestion")
     --reaper.ShowConsoleMsg(tostring(question).."\n")
     if r_val then
         return question
@@ -77,8 +77,8 @@ function GetLineFromRegion(cur_pos)
 end
 
 function GetLineFromExtState()
-    local r_val, line = reaper.GetProjExtState(0, "TalentCue", "LineDisplay")
-    local override, o_line = reaper.GetProjExtState(0, "TalentCue", "FreeLineDisplay")
+    local r_val, line = reaper.GetProjExtState(0, "TalentLineDisplay", "LineDisplay")
+    local override, o_line = reaper.GetProjExtState(0, "TalentLineDisplay", "FreeLineDisplay")
     if o_line ~= "" then
         return o_line
     elseif r_val then
@@ -282,9 +282,9 @@ function loop()
 
     DrawDialog(dialog, margin)
 
-    if display_line then
+    if display_line and dialog[1] ~= "" then
         DisplayStopLight(count_down, display_text)
-        if redo then DrawReadout("redo in:") end
+        if redo and count_down > 0 then DrawReadout("redo in:") end
     else
         DrawRect(0.1, 0.1, 0.8, 0.8, 0, 1)
     end

@@ -2,7 +2,7 @@ question = "Have you seen any good movies or read any good books recently? Tell 
 
 function main()
 
-    reaper.SetProjExtState(0, "TalentCue", "FreeLineDisplay", question)
+    reaper.SetProjExtState(0, "TalentLineDisplay", "FreeLineDisplay", question)
 
 end
 

@@ -1,6 +1,6 @@
 function main()
 
-    reaper.SetProjExtState(0, "TalentCue", "FreeLineDisplay", "")
+    reaper.SetProjExtState(0, "TalentLineDisplay", "FreeLineDisplay", "")
 
 end
 
