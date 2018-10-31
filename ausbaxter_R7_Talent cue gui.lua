@@ -243,13 +243,13 @@ function loop()
 
     if cue_on == "next" or OnRecord(play_state) then -- cue_on ~= "" use "read" and "redo" itself
 
+        count_down = 4
         display_line = false
         redo = false
         display_clock:Stop()
         rec_buffer_clock:Start()
-        count_down = 4
+
         display_text = "Go!"
-        display_color = reaper.ColorToNative(0, 255, 0)
 
     elseif cue_on == "redo" then
 
@@ -260,7 +260,6 @@ function loop()
         redo = true
 
         display_text = "Go!"
-        display_color = reaper.ColorToNative(255, 255, 0)
 
     end
 
