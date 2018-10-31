@@ -172,11 +172,11 @@ function DrawDialog(str, margin) --take table
         gfx.drawstr(str[1])
     else
         for i, line in ipairs(str) do
-            local str_w, str_h = GetWrappedWidth(str)
+            local str_w, str_h = gfx.measurestr(line)
             gfx.x = (gfx.w / 2) - (str_w / 2)
             gfx.y = (gfx.h / 2) - (str_h * #str / 2) + (str_h * (i-1))
             gfx.drawstr(line)
-        end
+        end 
     end
 end
 
@@ -306,7 +306,7 @@ end
 
 function main()
 
-    --reaper.SetProjExtState(0, "TalentCue", "", "") --reset ext state
+    reaper.SetProjExtState(0, "TalentCue", "", "") --reset ext state
 
     -- width = 1600
     -- height = 2000
