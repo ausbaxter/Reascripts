@@ -143,10 +143,10 @@ function GenerateWordWrap(str, sep_table)
 end
 
 function SetColor(col)
-	-- If we're given a table of color values, just pass it right along
-	if type(col) == "table" then
-		gfx.set(col[1], col[2], col[3], col[4] or 1)
-	end     
+  -- If we're given a table of color values, just pass it right along
+  if type(col) == "table" then
+    gfx.set(col[1], col[2], col[3], col[4] or 1)
+  end     
 end
 
 function DrawDialog(str, margin) --take table
@@ -308,18 +308,12 @@ function main()
 
     reaper.SetProjExtState(0, "TalentCue", "", "") --reset ext state
 
-    -- width = 1600
-    -- height = 2000
-
-    -- x = 1080
-    -- y = 0
-    
-    width = 800
-    height = 1000
-
-    x = 0
+    x = 1080
     y = 0
 
+    width = 800
+    height = 1000
+    
     margin = 60
     count_down = 4
 
@@ -335,6 +329,15 @@ function main()
 
 end
 
-reaper.atexit(function() gfx.quit() end)
+reaper.atexit(function()
+    is_new_value,filename,sectionID,cmdID,mode,resolution,val = reaper.get_action_context()
+    reaper.SetToggleCommandState(sectionID, cmdID, 0)
+    reaper.RefreshToolbar2(sectionID, cmdID)
+    gfx.quit() 
+end)
+
+is_new_value,filename,sectionID,cmdID,mode,resolution,val = reaper.get_action_context()
+reaper.SetToggleCommandState(sectionID, cmdID, 1)
+reaper.RefreshToolbar2(sectionID, cmdID)
 
 main()
