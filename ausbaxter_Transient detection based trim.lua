@@ -9,8 +9,6 @@ local trim_left = 41305
 
 local unselect_all = 40289
 
-local transient_differential = 5
-
 function getitems()
     local t = {}
     for i = 0, reaper.CountSelectedMediaItems(0) - 1 do
@@ -59,7 +57,7 @@ function main()
 
         reaper.Main_OnCommand(reverse_item, 0)
 
-        raise_lower_threshold(false, transient_differential)
+        raise_lower_threshold(false, 15)
 
         reaper.Main_OnCommand(next_transient, 0)
         reaper.Main_OnCommand(nudge_left, 0)
@@ -71,7 +69,7 @@ function main()
 
         reaper.SetMediaItemInfo_Value(item, "B_UISEL", 0)
 
-        raise_lower_threshold(true, transient_differential)
+        raise_lower_threshold(true, 15)
 
         reaper.SetMediaItemInfo_Value(item, "D_FADEINLEN", 0.02)
         reaper.SetMediaItemInfo_Value(item, "D_FADEOUTLEN", 0.02)
