@@ -41,6 +41,89 @@ function GetDefaultScale(name)
     return nil
 end
 
+--------------------
+function ConvertScaleStringToTable(scale_string)
+
+    local t = {}
+
+    for i = 1, #scale_string do
+        local d = tonumber(scale_string:sub(i,i))
+        table.insert(t, d)
+    end
+
+    return t
+
+end
+
+function IndexWrap(idx, table)
+    if idx % #table == 0 then 
+        return #table
+    elseif idx > 0 then
+        return idx % #table
+    elseif idx <= 0 then
+        return #table - math.abs(idx)
+    end
+end
+
+function GetScaleDegree(note, scale) --scale is table of nums
+
+    function LookForDegreeAhead(start, distance, table)
+        for i = start, distance - 1 do
+            local v = table[IndexWrap(i, table)]
+            if v ~= 0 then
+                return v, i - start
+            end
+        end
+    end
+
+    local degree
+    local new_note_base = note
+    local adj_note = (note % 12) + 1
+    local last_deg = -1
+    local last_deg_position = 0
+    local last_deg_distance = 0
+    local scale_map = {}
+
+    if scale[adj_note] ~= 0 then degree = scale[adj_note] end
+
+    for n, d in ipairs(scale) do
+        
+        if not degree then
+
+            if n < adj_note 
+            and d ~= 0 then
+                last_deg_position = n
+                last_deg = d
+            end
+
+            if adj_note == n
+            and d == 0 then
+
+                last_deg_distance = adj_note - last_deg_position
+                degree, fwd_deg_distance = LookForDegreeAhead(n, last_deg_distance, scale)
+                
+                if not degree then 
+                    degree = last_deg
+                    new_note_base = note - last_deg_distance
+                else
+                    new_note_base = note + fwd_deg_distance
+                end
+
+            end
+
+        end
+
+        if d ~= 0 then scale_map[d] = n - 1 end
+
+    end
+    -- reaper.ShowConsoleMsg("Incoming Note: " .. note .. "\n" ..
+    -- "Outgoing Note: " .. new_note_base .. "\n" ..
+    -- "Scale Degree: " .. degree .. "\n")
+    return degree, new_note_base, scale_map
+
+end
+
+--------------------
 function GetMidiEditorCursorContext(take, root)
     local _, inline, note_row = reaper.BR_GetMouseCursorContext_MIDI()
     if inline == 1 then reaper.ReaScriptError("Inserting chords does not work with inline editors.") return end
@@ -55,8 +138,10 @@ function GetMidiEditorCursorContext(take, root)
     local note_start = math.floor((mouse - measure_start) / tick_offset) * tick_offset + measure_start
     local note_end = reaper.MIDI_GetPPQPosFromProjQN(take, grid_setting + reaper.MIDI_GetProjQNFromPPQPos(take, note_start))
     local desired_octave = math.floor((note_row - root)/12)
-    reaper.ShowConsoleMsg("note pitch: "..note_row.."\n".."desired octave: "..desired_octave.."\n".."cursor position: "..mouse.."\n".."note end: "..note_end.." ticks\n".."grid: "..grid_setting.."\n".."note start: "..note_start.."\n".."tick offset: "..tick_offset.."\n")
-    return note_start, note_end, desired_octave
+    local note = note_row % 12
+
+    --reaper.ShowConsoleMsg("note pitch: "..note_row.."\n".."desired octave: "..desired_octave.."\n".."cursor position: "..mouse.."\n".."note end: "..note_end.." ticks\n".."grid: "..grid_setting.."\n".."note start: "..note_start.."\n".."tick offset: "..tick_offset.."\n")
+    return note_row, note_start, note_end
 end
 
 function DeselectMidiNotes(take)
@@ -137,7 +222,7 @@ function Main()
     cc_window, cc_segment = reaper.BR_GetMouseCursorContext()
     if cc_window == "midi_editor" and cc_segment == "notes" then
         
-        note_on, note_off, octave = GetMidiEditorCursorContext(take, root)
+        note_row, note_on, note_off = GetMidiEditorCursorContext(take, root)
 
         if scale_on == 1 then
             scale_string = GetDefaultScale(name)
@@ -150,7 +235,7 @@ function Main()
                     if scale_string == nil then reaper.ReaScriptError("No matching scale. These actions do not work when key snap to chords") return end
 
                 elseif os == "OSX64" then
-                    
+                    reaper.ShowConsoleMsg("No scale found... looking for osx scale path\n")
                 end
 
             end
@@ -159,24 +244,30 @@ function Main()
         end
         --need to read reascale files in user directory to get missing scales.
 
+        scale_table = ConvertScaleStringToTable(scale_string)
+
+        scale_degree, base_note, scale_degree_map = GetScaleDegree(note_row, scale_table)
+
         DeselectMidiNotes(take)
 
-        local base_note = octave * 12 + root
-        local root_index = SearchScale(scale_string, scale_degree) - 1 
-        if root_index == -1 then return end
-        for i = 0, 2 do
-            local note_offset = scale_degree + 2 * i
-            local wrap = 0
-            if note_offset > 7 then 
-                note_offset = note_offset - 7 
-                wrap = 12 
-            end
-            local next_index = SearchScale(scale_string, note_offset) - 1 - root_index + wrap
-            local note = base_note + root_index + next_index
-            --reaper.ShowConsoleMsg("Note: " .. note.."\n")
-            reaper.MIDI_InsertNote(take, true, false, note_on, note_off-1, def_chan, note, def_vel, false)
-        end
+        num_notes = 4
 
+        ignore = {}
+        ignore[0] = true
+
+        offset = scale_degree_map[IndexWrap(scale_degree,scale_degree_map)]
+
+        note_num = 1
+        for i = scale_degree, scale_degree + (num_notes-1) * 2, 2 do
+            local scale = math.floor((i-1)/#scale_degree_map)
+            local index = IndexWrap(i,scale_degree_map)
+            if ignore[note_num] == nil then
+                local note = base_note + scale_degree_map[index] - offset + (12 * scale)
+                reaper.MIDI_InsertNote(take, true, false, note_on, note_off-1, def_chan, note, def_vel, false)
+            end
+            note_num = note_num + 1
+        end
+        
         reaper.MIDI_Sort(take)
     end
 
