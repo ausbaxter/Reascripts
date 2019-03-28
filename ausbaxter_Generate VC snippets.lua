@@ -18,7 +18,9 @@ local bad_chars = {
     {"\t", "\\t"},
     {"\f", "\\f"},
     {"\r", "\\r"},
-    {"%c", ""}
+    {"\n", "\\n"},
+    {"%c", ""},
+    {"%s$", ""}
 }
 
 function SetHtmlScope(scope)
@@ -40,33 +42,28 @@ function CleanBadChars(s)
     return s
 end
 
-function GetAPIPath()
-    reaper.ShowMessageBox(
-        "Please copy and paste the path name of the reascript api html file to the 'Reascript API Doc Path' window.\n\n"..
-        "The API and 'Reascript API Doc Path' window will be opened after pressing 'Ok'.",
-        "Generate Reaper Visual Studio Code Snippets", 
-        0
-    )
-    reaper.Main_OnCommand(OPEN_API, 0)
-    local retval, user_input = reaper.GetUserInputs("Reascript API Doc Path", 1, "Path to API html:", "Paste Here")
-    if not retval then return end
-    local path = string.gsub(user_input, "file:"..DIR_SEP..DIR_SEP, "")
-    if not reaper.file_exists(path) then return end
-    return path
-end
-
 function CsvToTable(csv)
     if not csv then error("CsvToTable Error: Invalid argument", 2) return end
     if csv == "" then error("CsvToTable Error: Empty csv", 2) return end
     local c_table = {}
     local out = {}
     local ignore_space = false
+    local ignore_comma = false
     for i = 1, string.len(csv) do
         local c = string.sub(csv, i, i)
         if c == "," then
             ignore_space = true
+            if ignore_comma then
+                ignore_comma = false
+            else
+                table.insert(out, table.concat(c_table))
+                c_table = {}
+            end
+        elseif c == "[" then
+            ignore_comma = true
             table.insert(out, table.concat(c_table))
             c_table = {}
+            table.insert(c_table, c)
         else
             if ignore_space then
                 if c ~= " " then 
@@ -80,6 +77,55 @@ function CsvToTable(csv)
     end
     table.insert(out, table.concat(c_table))
     return out
+end
+
+function EnsureValidPath(path)
+    if not path then return nil end
+    if type(path) ~= "string" then return nil end
+    if not reaper.EnumerateFiles(path, 1) then reaper.ShowMessageBox("Please specify a valid output path.", "Error: Invalid output path", 0) --[[error("Path Error: Output path does not exist")]] return nil end
+    local li = string.len(path)
+    if string.sub(path, li, li) ~= DIR_SEP then return path .. DIR_SEP else return path end
+end
+
+function GetVersion()
+    return tonumber(string.match(reaper.GetAppVersion(), "[%d%.]+"))
+end
+
+function GetAPIPath()
+    local req_new_api = true
+    local cur_ver = GetVersion()
+    local old_ver = reaper.GetExtState("api_snippets", "old_version")
+    reaper.SetExtState("api_snippets", "old_version", cur_ver, true)
+    
+    if old_ver and old_ver ~= "" and cur_ver <= tonumber(old_ver) then
+        req_new_api = false
+    end
+    
+    local ext_api = reaper.GetExtState("api_snippets", "api_path")
+    local ext_out_path = reaper.GetExtState("api_snippets", "out_path")
+    if not ext_api or ext_api == "" or req_new_api then 
+        ext_api = "Paste Here" 
+        reaper.Main_OnCommand(OPEN_API, 0)
+    end
+    if not ext_out_path or ext_out_path == "" then 
+        ext_out_path = "Paste Here" 
+    end
+
+    local retval, user_input = reaper.GetUserInputs("Generate Reascript API Snippets", 2, "API html file:,Output snippets path:", ext_api .. "," .. ext_out_path)
+    if not retval then return end
+    t_user_input = CsvToTable(user_input)
+
+    local api = string.match(t_user_input[1], DIR_SEP .. "[^" .. DIR_SEP .. "].-$")
+    if not reaper.file_exists(api) then error("Error: Invalid api path") end
+    reaper.SetExtState("api_snippets", "api_path", api, true)
+
+    local out_path = EnsureValidPath(t_user_input[2])
+    if not out_path then return end
+    reaper.SetExtState("api_snippets", "out_path", out_path, true)
+
+    local out_file = out_path .. "reaper-api.code-snippets"
+
+    return api, out_file
 end
 
 Queue = {type = "queue"}
@@ -110,6 +156,12 @@ function Queue:Dequeue()
     return retval
 end
 
+function Queue:DequeueAll(empty)
+    if type(self) ~= "table" or self.type ~= "queue" then error("DequeueAll Error: Self has no object", 2) end
+    if empty then for i, c in ipairs(self) do self[i] = nil end end
+    return table.concat(self)
+end
+
 function Queue:Putback(num_entries)
     if type(self) ~= "table" or self.type ~= "queue" then error("Putback Error: Self has no object", 2) end
     local n = num_entries or 1
@@ -122,6 +174,17 @@ function Queue:SetIndex(index)
     if index < 1 then index = 1
     elseif index > #self then index = #self end
     self.index = index
+end
+
+function GetJsonSnippet(name, prefix, scope, body, description)
+    return table.concat(
+        {"\t\"" .. name .. "\": {",
+        "\t\t\"prefix\": \"" .. prefix .. "\",",
+        "\t\t\"scope\": \"" .. scope .. "\",",
+        "\t\t\"body\": \"" .. body .. "\",",
+        "\t\t\"description\": \"" .. description .. "\"",
+        "\t}"
+        }, "\n")
 end
 
 Func = {type = "func"}
@@ -149,39 +212,131 @@ function Func:GetTabStops()
     local t = {self.rets, self.args}
     local o = {}
     local tab_num = 1
+    local tss = "" tse = ""
+    local opt_args = false
+    if #self.rets > 0 then 
+        tab_num = 2
+        tss = "${1:"
+        tse = " = }"
+    end
+    if NumOptArgs() > 1 then opt_args = true end
     for i, s in ipairs(t) do
         local tab = {}
         for j, e in ipairs(s) do
-            table.insert(tab, "${"..tab_num..":"..e.."}")
+            if string.find(e, "%[") then
+                tab_num = tab_num + 1
+                table.insert(tab, "${" .. tab_num - 1 .. ":${"..tab_num..":"..e.."}")
+            elseif string.find(e, "%]") then
+                table.insert(tab, "${"..tab_num..":"..e.."}}")
+            else
+                table.insert(tab, "${"..tab_num..":"..e.."}")
+            end
             tab_num = tab_num + 1
         end
         table.insert(o, table.concat(tab, ", "))
     end
-    if string.find(o[2], "[%[%]]") and NumOptArgs() > 0 then o[2] = string.gsub(o[2],"%${%d:.?%[.-%]", "${" .. #self.args + 1 .. ":%1" .. "}") end
-    return o[1], o[2]
+    -- if string.find(o[2], "[%[%]]") and NumOptArgs() > 0 then o[2] = string.gsub(o[2],"%${%d:.?%[.-%]", "${" .. #self.args + 1 .. ":%1" .. "}") end
+    return tss .. o[1] .. tse, o[2]
 end
 
 function Func:GetSnippet()
     if type(self) ~= "table" or self.type ~= "func" then error("GetSnippet Error: Self has no object", 2) end
     local rets, args = self:GetTabStops()
-    local eq = ""
-    if rets ~= "" then eq = " = " end
-    local t = {"\t\"" .. self.name .. "\": {",
-        "\t\t\"prefix\": \"" .. self.name .. "\",",
-        "\t\t\"scope\": \"" .. self.scope .. "\",",
-        "\t\t\"body\": \"" .. rets .. eq .. self.name .. "(" .. args .. ")\",",
-        "\t\t\"description\": \"" .. self.desc .. "\"",
-        "\t}"
-    }
-    return table.concat(t, "\n")
+    return GetJsonSnippet(self.name, 
+        self.name, 
+        self.scope, 
+        rets .. self.name .. "(" .. args .. ")",
+        self.desc
+    )
 end
 
-function Func:Print()
-    if not self then error("Print Error: Self has no object", 2) end
-    local rets = #self.rets > 0 and table.concat(self.rets, ", ") .. " " or ""
-    local args = #self.args > 0 and table.concat(self.args, ", ") or ""
-    local desc = self.desc ~= "" and "\n" .. self.desc
-    reaper.ShowConsoleMsg(self:GetSnippet() .. "\n\n")
+function GetGfxQueue(str)
+    local parse_queue = Queue.New()
+    local char_table = {}
+    local i = 1
+    while i <= string.len( str ) do
+        local c = string.sub( str, i, i )
+        i = i + 1
+        if c == "<" then
+            if #char_table > 0 then
+                parse_queue:Enqueue(table.concat(char_table))
+                char_table = {}
+            end
+            local t = {"<"}
+            while c ~= ">" do
+                c = string.sub( str, i, i )
+                i = i + 1
+                table.insert(t, c)
+            end
+            parse_queue:Enqueue(table.concat(t))
+        else
+            table.insert(char_table, c)
+        end
+    end
+    return parse_queue
+end
+
+function U_List(gfx_queue)
+    local elm = gfx_queue:Dequeue() --get first element
+    local t = {}
+    while elm do
+        if elm == "<li>" then
+            table.insert(t, gfx_queue:Dequeue())
+        elseif elm == "<ul>" then
+            table.remove(t)
+            gfx_queue:Putback(2)
+            local par = gfx_queue:Dequeue()
+            gfx_queue:Putback(-1)
+            table.insert(t, {par, U_List(gfx_queue)})
+        end
+        elm = gfx_queue:Dequeue() -- get next element
+    end
+    return t
+end
+
+function ParseGfxVars(gfx_queue)
+    local elm = gfx_queue:Dequeue()
+    while elm and elm ~= "<ul>" do
+        elm = gfx_queue:Dequeue()
+    end
+    return U_List(gfx_queue)
+end
+
+function WriteGfxSnippets(gfx_string, scope)
+    local gfx_queue = GetGfxQueue(gfx_string)
+    local gfx_vars = ParseGfxVars(gfx_queue)
+    for i, v in ipairs(gfx_vars) do
+        local output = ""
+        if type(v) == "table" then
+            local var, d1 = string.match(v[1], "(.-)%s[%w-]+%s(.+)")
+            local d_tbl = {d1}
+            for j, v2 in ipairs(v[2]) do table.insert(d_tbl, v2) end
+            local var_list = CsvToTable(var)
+            for i, single_var in ipairs(var_list) do
+                local output = GetJsonSnippet(scope .." ".. single_var, 
+                    single_var, 
+                    scope, 
+                    single_var,
+                    CleanBadChars(table.concat(d_tbl, "\n\t"))
+                )
+                -- reaper.ShowConsoleMsg(output.."\n")
+                io.write(output, ",\n")
+            end
+        else
+            local var, desc = string.match(v, "(.-)%s[%w-]+%s(.+)")
+            local var_list = CsvToTable(var)
+            for i, single_var in ipairs(var_list) do
+                local output = GetJsonSnippet(scope .." ".. single_var, 
+                    single_var, 
+                    scope, 
+                    single_var,
+                    CleanBadChars(desc)
+                )
+                -- reaper.ShowConsoleMsg(output.."\n")
+                io.write(output, ",\n")
+            end
+        end
+    end
 end
 
 function ConvertToSnippets(api)
@@ -226,6 +381,8 @@ function ConvertToSnippets(api)
                 if f_desc then f_desc = string.gsub(f_desc, "\\", "\\\\") end
                 local f = Func.New(nil, f_name, f_args, f_desc, html_scope.current)
                 io.write(f:GetSnippet(),",\n")
+            elseif string.find(string.lower(line), "gfx variables") then
+                WriteGfxSnippets(line, html_scope.current)
             end
         elseif html_scope.lua or html_scope.python then
             local f_name, f_args = string.match(line, "<code>(.-)%((.-)%)")
@@ -234,6 +391,8 @@ function ConvertToSnippets(api)
                 if f_desc then f_desc = string.gsub(f_desc, "\\", "\\\\") end
                 local f = Func.New(nil, f_name, f_args, f_desc, html_scope.current)
                 io.write(f:GetSnippet(),",\n")
+            elseif string.find(string.lower(line), "gfx variables") then
+                WriteGfxSnippets(api:Dequeue(), html_scope.current)
             end
         end
         
@@ -247,18 +406,19 @@ function ConvertToSnippets(api)
 end
 
 function Main()
-    local path = GetAPIPath()
-    if not path then return end
+    local path, out_path = GetAPIPath()
+    if not path or not out_path then return end
+    --TODO add other snippet support (sublime text, etc)
+    --TODO create html parsing test module
 
     -- local path = "/Users/austin/Desktop/testing.html"
+    -- local out_path = "/Users/austin/Desktop/output.code-snippets"
     -- local path = "/private/var/folders/2s/s65k1yzn4658vfwt9pwd9gd40000gn/T/reascripthelp.html"
-
-    local out_path = "/Users/austin/Desktop/output.code-snippets"
-    local out_file = io.output(out_path, "w")
 
     api = Queue.New()
     api:EnqueueFile(path)
 
+    out_file = io.output(out_path, "w")
     io.write("{\n")
 
     ConvertToSnippets(api)
