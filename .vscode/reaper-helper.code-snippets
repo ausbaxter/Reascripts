@@ -1,0 +1,39 @@
+{
+    "PackageHeader": {
+        "prefix": "package header",
+        "scope": "lua",
+        "body": [
+            "--[[",
+            "@version ${1:1.0}",
+            "@author ausbaxter",
+            "${2:@description\n\t${3:Display name of package}}",
+            "${4:@about\n\t${5:##Header}\n\t${6:Description about script\n\t\t- list item}}",
+            "${7:@changelog\n\t${8:changes to script\n\tmore changes to script}}",
+            "${9:@link\n\t${10:linktowebiste http://website.com}}",
+            "@donation paypal.me/abaxtersound",
+            "${11:@noindex ${12|false,true|}}",
+            "${13:@screenshot\n\t${14:linktoscreenshot http://screenshot.com}}",
+            "${15:@metapackage ${16|false,true|}}",
+            "${17:@provides\n\t${18:[windows] reaper_extension.dll http://mysite.com/download/$version/$path\n\t[darwin jsfx] Ultimate Limiter.jsfx\nOriginal File.lua > New Directory/Target File.lua\n\tFile Name.conf > New Directory/}}",
+            "]]\n"
+        ],
+        "description": "Reapack package metadata snippet.\nOnly @version is mandatory.\nAll fields are provided but are not necessary."
+    },
+    "LoadAusbaxterFunctions": {
+		"prefix": "load functions",
+		"scope": "lua",
+		"body": [
+            "--------------------------------------------------------------------------------------------",
+            "--[[                                   Load Functions                                     ]]",
+            "--------------------------------------------------------------------------------------------",
+            "local is_new_value,filename,sectionID,cmdID,mode,resolution,val = reaper.get_action_context()",
+            "local p_delim = string.find(reaper.GetOS(), \"Win\") and \"\\\\\\\" or \"/\"",
+            "local base_directory = string.match(filename, \".*\" .. p_delim)",
+            "loadfile(base_directory .. \"ausbaxter_Functions.lua\")()",
+            "--------------------------------------------------------------------------------------------",
+            "--[[                                                                                      ]]",
+            "--------------------------------------------------------------------------------------------"
+        ],
+		"description": "Loads ausbaxter_Functions.lua script from currently executed script directory."
+    }
+}
