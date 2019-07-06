@@ -18,4 +18,4 @@ loadfile(base_directory .. "ausbaxter_Functions.lua")()
 --[[                                                                                      ]]
 --------------------------------------------------------------------------------------------
 
-InsertChordFromScaleDegree(5)
+InsertChordFromScaleDegree(1)
