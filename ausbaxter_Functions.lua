@@ -1,3 +1,54 @@
+--[[
+@version 1.0
+@author ausbaxter
+@description
+  Ausbaxter library functions
+@changelog
+  initial release
+@donation paypal.me/abaxtersound
+@noindex true
+]]
+
+local err_self = "Error: Missing self object"
+
+local function c_type(object)
+    if object.type then return object.type 
+    else return type(object)
+    end
+end
+
+local function t_assert(condition, message)
+    -- Throws error from level 3 in the call stack
+    -- (3) - Failed Function()
+    -- (2) -    t_assert() check in Failed function definition
+    -- (1) -        t_assert error line
+    if not condition then error(message, 3) end
+end
+
+--Data Structures
+Queue = {}
+Queue.__index = Queue
+--[[
+
+]]
+
+function Queue.New()
+  self = setmetatable({}, Queue)
+  self.type = "queue"
+  self.index = 1
+  return self
+end
+
+function Queue:Enqueue(element)
+    t_assert(not self, err_self)
+    table.insert(self, element)
+end
+
+function Queue:Dequeue()
+    t_assert(not self, err_self)
+    -- if self.index == 1
+end
+
 ----------------Debugging---------------------------------------------------
 function Log(msg)--Logs messages to the reaper console
 
@@ -332,3 +383,12 @@ function ShallowTableCopy(t_table) --Allows passing of 1D tables by value instea
     return t2
 
 end
+
+function Main()
+-- Run this script within Reaper to execute the following code for testing purposes. 
+
+
+
+end
+
+Main()
