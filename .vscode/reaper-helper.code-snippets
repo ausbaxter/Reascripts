@@ -35,5 +35,11 @@
             "--------------------------------------------------------------------------------------------"
         ],
 		"description": "Loads ausbaxter_Functions.lua script from currently executed script directory."
-    }
+    },
+    "Print": {
+		"prefix": "print",
+		"scope": "lua",
+		"body": "reaper.ShowConsoleMsg(${1})",
+		"description": "Loads ausbaxter_Functions.lua script from currently executed script directory."
+    },
 }
