@@ -9,6 +9,9 @@
 @noindex true
 ]]
 
+OS = reaper.GetOS()
+DELIM = string.find(OS, "Win") and "\\" or "/"
+
 local err_self = "Error: Missing self object"
 
 local function c_type(object)
@@ -460,19 +463,51 @@ function ShallowTableCopy(t_table) --Allows passing of 1D tables by value instea
 
 end
 
-function CHANGENAME()
-  reaper_path = reaper.GetResourcePath() .. "/Xenakios_Commands.ini"
+function CommandParametersExist()
+
+  reaper_path = reaper.GetResourcePath() .. DELIM .. "Xenakios_Commands.ini"
   if not reaper.file_exists(reaper_path) then 
-      reaper.ShowMessageBox("SWS Extension is required for this script.", "SWS Not Installed", 0)
-      return
+      error("SWS Extension is required for this script.", "SWS Not Installed", 2)
+      return false
   end
-  retval, ini_fade_in = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINTIMEA", "1.0", reaper_path)
-  local fade_in_length = tonumber(ini_fade_in) * 1000
 
-  retval, ini_fade_out = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINTIMEA", "1.0", reaper_path)
-  local fade_out_length = tonumber(ini_fade_out) * 1000
+  return true, reaper_path
 
-END
+end
+
+function GetCommandParameterFades()
+
+  local exists, path = CommandParametersExist()
+
+  if exists then
+
+    local command_parameters = { A = {}, B = {} }
+
+    retval, ini_A_fade_in_len = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINTIMEA", "5.0", path)
+    retval, ini_A_fade_out_len = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEOUTTIMEA", "1.0", path)
+    retval, ini_B_fade_in_len = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINTIMEB", "1.0", path)
+    retval, ini_B_fade_out_len = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEOUTTIMEB", "1.0", path)
+
+    retval, ini_A_fade_in_shape = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINSHAPEA", "2", path)
+    retval, ini_A_fade_out_shape = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEOUTSHAPEA", "2", path)
+    retval, ini_B_fade_in_shape = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINSHAPEB", "2", path)
+    retval, ini_B_fade_out_shape = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEOUTSHAPEB", "2", path)
+
+    command_parameters.A.fade_in_len = tonumber(ini_A_fade_in_len) * 1000
+    command_parameters.A.fade_out_len = tonumber(ini_A_fade_out_len) * 1000
+    command_parameters.B.fade_in_len = tonumber(ini_B_fade_in_len) * 1000
+    command_parameters.B.fade_out_len = tonumber(ini_B_fade_out_len) * 1000
+
+    command_parameters.A.fade_in_shape = tonumber(ini_A_fade_in_len)
+    command_parameters.A.fade_out_shape = tonumber(ini_A_fade_out_len)
+    command_parameters.B.fade_in_shape = tonumber(ini_B_fade_in_len)
+    command_parameters.B.fade_out_shape = tonumber(ini_B_fade_out_len)
+    
+    return command_parameters
+  
+  end
+
+end
 
 --[[ MULTIACTION FUNCTIONS ]]
 
