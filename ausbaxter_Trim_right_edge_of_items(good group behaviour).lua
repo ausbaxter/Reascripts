@@ -1,22 +1,13 @@
---external library usage from Lokasenna, thanks!-----------------------------------
-local info = debug.getinfo(1,'S');
-script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
-
-local function req(fole)
-    if missing_lib then return function () end end
-    local ret, err = loadfile(script_path .. fole)
-    if not ret then
-        reaper.ShowMessageBox("Couldn't load "..fole.."\n\nError: "..tostring(err), "Library error", 0)
-        missing_lib = true    
-        return function () end
-    else 
-        return ret
-    end  
-end
-------------------------------------------------------------------------------------
-
---library requirement
-req("ausbaxter_Helper_functions.lua")()
+--------------------------------------------------------------------------------------------
+--[[                                  Load Lib Functions                                  ]]
+--------------------------------------------------------------------------------------------
+local is_new_value,filename,sectionID,cmdID,mode,resolution,val = reaper.get_action_context()
+local p_delim = string.find(reaper.GetOS(), "Win") and "\\" or "/"
+local base_directory = string.match(filename, ".*" .. p_delim)
+loadfile(base_directory .. "ausbaxter_Functions.lua")()
+--------------------------------------------------------------------------------------------
+--[[                                                                                      ]]
+--------------------------------------------------------------------------------------------
 
 function main()
 

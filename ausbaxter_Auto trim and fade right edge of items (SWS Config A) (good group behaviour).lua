@@ -1,21 +1,14 @@
---external library usage from Lokasenna, thanks!-----------------------------------
-local info = debug.getinfo(1,'S');
-script_path = info.source:match[[^@?(.*[\/])[^\/]-$]]
+--------------------------------------------------------------------------------------------
+--[[                                  Load Lib Functions                                  ]]
+--------------------------------------------------------------------------------------------
+local is_new_value,filename,sectionID,cmdID,mode,resolution,val = reaper.get_action_context()
+local p_delim = string.find(reaper.GetOS(), "Win") and "\\" or "/"
+local base_directory = string.match(filename, ".*" .. p_delim)
+loadfile(base_directory .. "ausbaxter_Functions.lua")()
+--------------------------------------------------------------------------------------------
+--[[                                                                                      ]]
+--------------------------------------------------------------------------------------------
 
-local function req(fole)
-    if missing_lib then return function () end end
-    local ret, err = loadfile(script_path .. fole)
-    if not ret then
-        reaper.ShowMessageBox("Couldn't load "..fole.."\n\nError: "..tostring(err), "Library error", 0)
-        missing_lib = true    
-        return function () end
-    else 
-        return ret
-    end  
-end
-------------------------------------------------------------------------------------
-
-------------------------------------------------------------------------------------
 reaper_path = reaper.GetResourcePath() .. "/Xenakios_Commands.ini"
 if not reaper.file_exists(reaper_path) then 
     reaper.ShowMessageBox("SWS Extension is required for this script.", "SWS Not Installed", 0)
@@ -23,10 +16,8 @@ if not reaper.file_exists(reaper_path) then
 end
 retval, ini_fade_out = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEOUTTIMEA", "1.0", reaper_path)
 local fade_length = tonumber(ini_fade_out) * 1000
-------------------------------------------------------------------------------------
 
---library requirement
-req("ausbaxter_Helper_functions.lua")()
+--------------------------------------------------------------------------------------------
 
 function RightTrim(fade_length)
 
