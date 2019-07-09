@@ -460,6 +460,20 @@ function ShallowTableCopy(t_table) --Allows passing of 1D tables by value instea
 
 end
 
+function CHANGENAME()
+  reaper_path = reaper.GetResourcePath() .. "/Xenakios_Commands.ini"
+  if not reaper.file_exists(reaper_path) then 
+      reaper.ShowMessageBox("SWS Extension is required for this script.", "SWS Not Installed", 0)
+      return
+  end
+  retval, ini_fade_in = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINTIMEA", "1.0", reaper_path)
+  local fade_in_length = tonumber(ini_fade_in) * 1000
+
+  retval, ini_fade_out = reaper.BR_Win32_GetPrivateProfileString("XENAKIOSCOMMANDS", "FADEINTIMEA", "1.0", reaper_path)
+  local fade_out_length = tonumber(ini_fade_out) * 1000
+
+END
+
 --[[ MULTIACTION FUNCTIONS ]]
 
 --ausbaxter_Insert n degree chord in mouse octave (key snap overrides c major default) Source

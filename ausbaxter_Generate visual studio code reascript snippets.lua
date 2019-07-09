@@ -409,11 +409,6 @@ function Main()
     local path, out_path = GetAPIPath()
     if not path or not out_path then return end
     --TODO add other snippet support (sublime text, etc)
-    --TODO create html parsing test module
-
-    -- local path = "/Users/austin/Desktop/testing.html"
-    -- local out_path = "/Users/austin/Desktop/output.code-snippets"
-    -- local path = "/private/var/folders/2s/s65k1yzn4658vfwt9pwd9gd40000gn/T/reascripthelp.html"
 
     api = Queue.New()
     api:EnqueueFile(path)

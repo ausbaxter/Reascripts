@@ -1,3 +1,21 @@
+--[[
+@version 1.0
+@author ausbaxter
+@description
+    Trim Selected Items to Regions Bounds in Time Selection
+@about
+    ## Trim Selected Items to Regions Bounds in Time Selection
+        Trims any selected items to the bounds of the closest region. Works in timeline order and doesn't split clips so any item overlapping multiple regions will be trimmed to the edges of the first region. 
+
+    ### Future Update
+    - Split items at region edges if necessary, removing out of region segments.
+
+@changelog
+    [1.0] - 2019-06-09
+    + Initial release
+@donation paypal.me/abaxtersound
+]]
+
 local unselect_items = 40289
 
 function GetSelectedMediaItems()

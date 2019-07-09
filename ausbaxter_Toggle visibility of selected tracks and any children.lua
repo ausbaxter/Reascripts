@@ -1,10 +1,14 @@
---@description Toggle visibility of selected tracks and any children
---@version 1.0
---@author ausbaxter
---@about
---  # Toggle visibility of selected tracks and any children
---@changelog
---  + Initial release
+--[[
+@version 1.0
+@author ausbaxter
+@description Toggle visibility of selected tracks and any children
+@about
+    ## Toggle visibility of selected tracks and any children
+    My default show/hide shortcut, will recursively show/hide the selected track and any children.
+@changelog
+    [1.0] - 2019-06-09
+    + Initial release
+]]
 
 --------------------------------------------------------------------------------------------------------
 
