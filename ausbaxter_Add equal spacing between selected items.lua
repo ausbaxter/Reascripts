@@ -1,10 +1,13 @@
---@description Add equal spacing between selected items
---@version 1.0
---@author ausbaxter
---@about
---    # Adds a user defined spacing of silence in between each selected media item. Each track is ordered sequentially: track 1 items will precede track 2 items etc.
---@changelog
---  + Initial release
+--[[
+@description Add equal spacing between selected items
+@version 1.0
+@author ausbaxter
+@about
+  Adds a user defined spacing of silence in between each selected media item. Each track is ordered sequentially: track 1 items will precede track 2 items etc.
+@changelog
+  [1.0] 2019-03-12
+  + Initial release
+]]
 
 function GetSelectedItems()
   local count = reaper.CountSelectedMediaItems(0)

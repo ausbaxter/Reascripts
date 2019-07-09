@@ -2,7 +2,7 @@
 @version 1.0
 @author ausbaxter
 @description
-  Ausbaxter library functions
+  ausbaxter library functions
 @changelog
   initial release
 @donation paypal.me/abaxtersound

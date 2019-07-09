@@ -1,3 +1,13 @@
+--[[
+@version 1.0
+@author ausbaxter
+@description Add All Tracks Above Current to Selection
+@changelog
+    [1.0] - 2019-07-09
+    + Initial release
+@donation paypal.me/abaxtersound
+]]
+
 tk_count = reaper.CountSelectedTracks(0)
 if tk_count == 0 then return end
 

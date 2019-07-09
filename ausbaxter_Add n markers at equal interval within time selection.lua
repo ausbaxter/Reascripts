@@ -1,23 +1,12 @@
- --[[
- * Name: Add number of markers at equal interval within time selection
- * Description: Creates new markers at the start of selection and at specific intervals subdividing the selection into "n" segments
- * Instructions: Create time selection. Run Script. Enter number of segments you want to divide to, and choose a name for the markers
- * Author: Ausbaxter
- * Author URI: https//:austinbaxtersound.com
- * Repository: GitHub > Ausbaxter > Reascripts
- * Repository URL: https://github.com/ausbaxter/Reascripts
- * File URI: https://github.com/ausbaxter/Reascripts/Ausbaxter_Add number of markers at equal interval within time selection.lua
- * Licence: GPL v3
- * REAPER: 5.XX
- * Extensions: None
- * Version: 1.0
---]]
- 
 --[[
- * Changelog:
- * v1.0 (2017-11-02)
-  + Initial Release
---]]
+@version 1.0
+@author ausbaxter
+@description Add number of markers at equal interval within time selection
+@changelog
+  [1.0] - 2019-07-09
+  + Initial release
+@donation paypal.me/abaxtersound
+]]
 
 --parses csv inputs from reaper.GetUserInputs()
 function Split(user_string, keys)
@@ -61,18 +50,16 @@ function CreateMarkers(name, start, interval, n)
   
 end
 
--- primary function
 function Main()
   
-  --Begin reaper undo block
   reaper.Undo_BeginBlock()
   
-  local user_keys = {"n", "Name"} --strings used in reaper GUI
+  local user_keys = {"n", "Name"}
   local num_inputs = 2
-  local ts_start, ts_end = reaper.GetSet_LoopTimeRange(false, false, 0, 0, 0) --retrieve time selection start and end values
+  local ts_start, ts_end = reaper.GetSet_LoopTimeRange(false, false, 0, 0, 0)
   local ts_length = ts_end - ts_start
   
-  if ts_start ~= ts_end then -- check if time selection exists
+  if ts_start ~= ts_end then
   
     retval, user_input = reaper.GetUserInputs("Add number of markers at equal interval within time selection", num_inputs, ConcatKeys(user_keys, ": "), "")
     input_result = Split(user_input,user_keys)
@@ -106,7 +93,4 @@ function Main()
   
 end
 
---excecute main function
 Main()
-
-

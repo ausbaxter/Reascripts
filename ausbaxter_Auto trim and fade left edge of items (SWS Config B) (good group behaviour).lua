@@ -1,3 +1,16 @@
+--[[
+@version 1.0
+@author ausbaxter
+@description Auto trim and fade left edge of items (SWS Config B) (good group behaviour)
+@about
+    ## Auto trim and fade left edge of items (SWS Config B) (good group behaviour)
+    Trims an item at the edit cursor - the SWS Config B fade in length, sets the fade in to the same length
+@changelog
+    [1.0] - 2019-07-09
+    + Initial release
+@donation paypal.me/abaxtersound
+]]
+
 --------------------------------------------------------------------------------------------
 --[[                                  Load Lib Functions                                  ]]
 --------------------------------------------------------------------------------------------
